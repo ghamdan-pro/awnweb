@@ -37,11 +37,17 @@ async function startServer() {
     });
   }
 
+  const domainUrl = process.env.APP_URL 
+    || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined)
+    || `https://awnyemen.vercel.app`;
+  const localUrl = `http://localhost:${PORT}`;
+
   app.listen(PORT, () => {
     console.log(`=======================================================`);
     console.log(`🇾🇪 Awn Yemen Unified Server running on port ${PORT}`);
-    console.log(`🔗 Web Application: http://localhost:${PORT}`);
-    console.log(`📡 Backend REST API: http://localhost:${PORT}/api/v1`);
+    console.log(`🔗 Local Web Application: ${localUrl}`);
+    console.log(`📡 Local Backend REST API: ${localUrl}/api/v1`);
+    console.log(`🚀 Production / Vercel Endpoint: ${domainUrl}/api/v1`);
     console.log(`🌐 Supabase Linked: ${process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL}`);
     console.log(`=======================================================`);
   });

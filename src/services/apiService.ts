@@ -1,8 +1,9 @@
 import { INITIAL_LISTINGS, Listing } from '../data/mockListings';
 import { CATEGORIES, Category } from '../data/categoriesData';
 import { COUNTRIES, Region } from '../data/yemenRegions';
+import { API_CONFIG } from '../config/apiConfig';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+const API_BASE_URL = API_CONFIG.BASE_URL;
 
 export const apiService = {
   // 1. Fetch Listings
