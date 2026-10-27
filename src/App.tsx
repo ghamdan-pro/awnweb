@@ -11,9 +11,12 @@ import { ListingDetailsModal } from './components/ListingDetailsModal';
 import { PostAdModal } from './components/PostAdModal';
 import { LocationSelectorModal } from './components/LocationSelectorModal';
 import { AccountSettingsModal } from './components/AccountSettingsModal';
+import { AuthModal } from './components/AuthModal';
+import { AdminDashboardModal } from './components/AdminDashboardModal';
 import { MourjanWarningModals } from './components/MourjanWarningModals';
 import { ChatModal } from './components/ChatModal';
 import { SubcategoryDetailView } from './components/SubcategoryDetailView';
+import { AuthUser } from './types/auth';
 
 import { CATEGORIES, Category, SubCategory } from './data/categoriesData';
 import { COUNTRIES, Country, Region, City } from './data/yemenRegions';
