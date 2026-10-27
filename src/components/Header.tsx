@@ -1,6 +1,7 @@
 import React from 'react';
-import { Search, Settings, Smartphone, Monitor, PlusCircle, Wallet, Globe, MapPin } from 'lucide-react';
+import { Search, Settings, Smartphone, Monitor, PlusCircle, Wallet, Globe, MapPin, User, Shield, LogIn } from 'lucide-react';
 import { Region, City } from '../data/yemenRegions';
+import { AuthUser } from '../types/auth';
 
 interface HeaderProps {
   currentRegion: Region;
@@ -10,6 +11,9 @@ interface HeaderProps {
   onSearchChange: (query: string) => void;
   onOpenPostAd: () => void;
   onOpenAccount: () => void;
+  currentUser: AuthUser | null;
+  onOpenLogin: () => void;
+  onOpenAdmin: () => void;
   viewportMode: 'mobile' | 'desktop';
   onToggleViewport: () => void;
   lang: 'ar' | 'en';
@@ -25,11 +29,14 @@ export const Header: React.FC<HeaderProps> = ({
   onSearchChange,
   onOpenPostAd,
   onOpenAccount,
+  currentUser,
+  onOpenLogin,
+  onOpenAdmin,
   viewportMode,
   onToggleViewport,
   lang,
   onToggleLang,
-  onOpenRules
+  onOpenRules,
 }) => {
   const isAr = lang === 'ar';
 
@@ -45,6 +52,16 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Admin shortcut in ribbon */}
+          <button
+            onClick={onOpenAdmin}
+            className="flex items-center gap-1 text-amber-300 hover:text-amber-100 font-bold transition-colors"
+            title={isAr ? 'دخول لوحة تحكم الإدارة' : 'Admin Control Panel'}
+          >
+            <Shield size={13} className="text-amber-400" />
+            <span>{isAr ? 'لوحة التحكم' : 'Admin Panel'}</span>
+          </button>
+
           {/* Device viewport toggle */}
           <button
             onClick={onToggleViewport}
@@ -90,7 +107,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Center Search Input (Mourjan style) */}
+        {/* Center Search Input */}
         <div className="flex-1 max-w-md mx-2">
           <div className="relative">
             <input
@@ -117,14 +134,42 @@ export const Header: React.FC<HeaderProps> = ({
             <span>{isAr ? 'نشر إعلان' : 'Post Ad'}</span>
           </button>
 
-          {/* Account & Profile */}
-          <button
-            onClick={onOpenAccount}
-            className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors relative"
-            title={isAr ? 'حسابي والإعدادات' : 'Account & Settings'}
-          >
-            <Settings size={18} />
-          </button>
+          {/* Authentication & User Button */}
+          {currentUser ? (
+            <div className="flex items-center gap-1.5">
+              {currentUser.role === 'admin' && (
+                <button
+                  onClick={onOpenAdmin}
+                  className="hidden md:flex items-center gap-1 bg-amber-400 hover:bg-amber-500 text-slate-950 font-bold px-2.5 py-1.5 rounded-lg text-xs shadow-sm transition-all"
+                  title={isAr ? 'لوحة تحكم الإدارة' : 'Admin Panel'}
+                >
+                  <Shield size={14} />
+                  <span>{isAr ? 'الإدارة' : 'Admin'}</span>
+                </button>
+              )}
+
+              <button
+                onClick={onOpenAccount}
+                className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors border border-white/10"
+                title={isAr ? 'الملف الشخصي والإعدادات' : 'Profile & Settings'}
+              >
+                <div className="w-5 h-5 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center font-black text-[10px]">
+                  {currentUser.name.charAt(0)}
+                </div>
+                <span className="hidden sm:inline max-w-[90px] truncate">{currentUser.name}</span>
+                <Settings size={14} className="text-slate-300" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={onOpenLogin}
+              className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-bold shadow-md transition-all active:scale-95"
+              title={isAr ? 'تسجيل الدخول / إنشاء حساب' : 'Sign In / Register'}
+            >
+              <LogIn size={15} />
+              <span>{isAr ? 'تسجيل الدخول' : 'Sign In'}</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -155,12 +200,17 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Quick Mourjan Shortcuts */}
           <div className="flex items-center gap-3">
             <button
-              onClick={onOpenAccount}
+              onClick={currentUser ? onOpenAccount : onOpenLogin}
               className="flex items-center gap-1 text-slate-200 hover:text-white transition-colors"
             >
               <Wallet size={13} className="text-amber-400" />
-              <span>{isAr ? 'رصيد الحساب' : 'Account Balance'}</span>
+              <span>
+                {currentUser
+                  ? `${isAr ? 'الرصيد:' : 'Balance:'} ${currentUser.walletBalanceYer.toLocaleString()} ر.ي`
+                  : (isAr ? 'رصيد الحساب' : 'Account Balance')}
+              </span>
             </button>
+
             <button
               onClick={onOpenRules}
               className="hidden sm:inline-block text-rose-200 hover:text-white transition-colors text-[11px]"

@@ -1,0 +1,308 @@
+import React, { useState } from 'react';
+import { X, Lock, Phone, Mail, Shield, UserPlus, LogIn, CheckCircle2, AlertCircle, Sparkles, Building, UserCheck } from 'lucide-react';
+import { AuthUser, DEMO_USERS, AccountType } from '../types/auth';
+
+interface AuthModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onLoginSuccess: (user: AuthUser) => void;
+  defaultAdmin?: boolean;
+  lang: 'ar' | 'en';
+}
+
+export const AuthModal: React.FC<AuthModalProps> = ({
+  isOpen,
+  onClose,
+  onLoginSuccess,
+  defaultAdmin = false,
+  lang,
+}) => {
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [isAdminMode, setIsAdminMode] = useState(defaultAdmin);
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [accountType, setAccountType] = useState<AccountType>('individual');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const isAr = lang === 'ar';
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    setTimeout(() => {
+      setLoading(false);
+      if (isAdminMode) {
+        // Admin credentials verification
+        if (identifier.toLowerCase().includes('admin') || password === 'admin' || password === 'admin123' || identifier === '') {
+          onLoginSuccess(DEMO_USERS.admin);
+          onClose();
+          return;
+        } else {
+          setError(isAr ? 'بيانات دخول المسؤول غير صحيحة (يمكنك استخدام زر الدخول السريع أدناه)' : 'Invalid Admin credentials');
+          return;
+        }
+      }
+
+      if (mode === 'login') {
+        if (!identifier.trim()) {
+          setError(isAr ? 'يرجى إدخال رقم الهاتف أو البريد الإلكتروني' : 'Please enter phone or email');
+          return;
+        }
+        // Success user login
+        const loggedUser: AuthUser = {
+          ...DEMO_USERS.individual,
+          name: identifier.includes('@') ? identifier.split('@')[0] : 'مستخدم عون',
+          phone: identifier.startsWith('+') ? identifier : `+967 ${identifier}`,
+        };
+        onLoginSuccess(loggedUser);
+        onClose();
+      } else {
+        // Register new user
+        if (!name.trim()) {
+          setError(isAr ? 'يرجى إدخال الاسم بالكامل' : 'Please enter your full name');
+          return;
+        }
+        const newUser: AuthUser = {
+          id: 'usr-' + Date.now(),
+          name: name.trim(),
+          phone: identifier.startsWith('+') ? identifier : `+967 ${identifier || '777000111'}`,
+          role: 'user',
+          accountType,
+          accountId: String(Math.floor(10000000 + Math.random() * 90000000)),
+          isVerified: false,
+          walletBalanceYer: 5000,
+          walletBalanceUsd: 10,
+        };
+        onLoginSuccess(newUser);
+        onClose();
+      }
+    }, 400);
+  };
+
+  const handleQuickDemoUser = () => {
+    onLoginSuccess(DEMO_USERS.individual);
+    onClose();
+  };
+
+  const handleQuickDemoAdmin = () => {
+    onLoginSuccess(DEMO_USERS.admin);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200 flex flex-col">
+        {/* Header */}
+        <div className={`px-5 py-4 text-white flex items-center justify-between ${isAdminMode ? 'bg-gradient-to-r from-slate-900 to-[#4d0c1f]' : 'bg-[#68142c]'}`}>
+          <div className="flex items-center gap-2">
+            {isAdminMode ? <Shield size={20} className="text-amber-400" /> : <LogIn size={20} className="text-amber-300" />}
+            <h3 className="font-bold text-base sm:text-lg font-['Cairo']">
+              {isAdminMode
+                ? (isAr ? 'تسجيل دخول لوحة تحكم الإدارة' : 'Admin Control Panel Login')
+                : mode === 'login'
+                ? (isAr ? 'تسجيل الدخول إلى عون يمن' : 'Login to Awn Yemen')
+                : (isAr ? 'إنشاء حساب جديد في عون يمن' : 'Register New Account')}
+            </h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1 rounded-full hover:bg-white/20 text-white transition-colors"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Toggle Mode Tabs */}
+        {!isAdminMode && (
+          <div className="grid grid-cols-2 bg-slate-100 p-1 border-b border-slate-200 text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => { setMode('login'); setError(null); }}
+              className={`py-2 rounded-lg transition-all ${mode === 'login' ? 'bg-white text-[#68142c] shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+            >
+              {isAr ? 'تسجيل الدخول' : 'Sign In'}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMode('register'); setError(null); }}
+              className={`py-2 rounded-lg transition-all ${mode === 'register' ? 'bg-white text-[#68142c] shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+            >
+              {isAr ? 'حساب جديد' : 'Register'}
+            </button>
+          </div>
+        )}
+
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {error && (
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-bold flex items-center gap-2">
+              <AlertCircle size={16} className="shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {mode === 'register' && !isAdminMode && (
+            <>
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  {isAr ? 'الاسم الكامل أو اسم الجهة' : 'Full Name or Company'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={isAr ? 'مثال: أحمد عبد الله / مطاعم الشيباني' : 'e.g. Ahmed Ali'}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#68142c]"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  {isAr ? 'نوع الحساب' : 'Account Type'}
+                </label>
+                <div className="grid grid-cols-2 gap-2 text-xs font-bold">
+                  {(['individual', 'company', 'agency', 'advertiser'] as AccountType[]).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setAccountType(t)}
+                      className={`p-2 rounded-lg border text-center transition-all ${
+                        accountType === t
+                          ? 'bg-[#68142c] text-white border-[#68142c]'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {t === 'individual' && (isAr ? 'حساب شخصي' : 'Personal')}
+                      {t === 'company' && (isAr ? 'شركة / منشأة' : 'Company')}
+                      {t === 'agency' && (isAr ? 'وكالة توظيف' : 'Agency')}
+                      {t === 'advertiser' && (isAr ? 'معلن تجاري' : 'Advertiser')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Identifier Input */}
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">
+              {isAdminMode
+                ? (isAr ? 'اسم مستخدم الإدارة أو البريد' : 'Admin Username or Email')
+                : (isAr ? 'رقم الهاتف (+967) أو البريد' : 'Phone (+967) or Email')}
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                placeholder={isAdminMode ? 'admin@awnyemen.com' : '777 123 456'}
+                className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 pl-9 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#68142c]"
+              />
+              <div className="absolute top-2.5 left-3 text-slate-400">
+                {isAdminMode ? <Shield size={16} /> : <Phone size={16} />}
+              </div>
+            </div>
+          </div>
+
+          {/* Password Input */}
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">
+              {isAr ? 'كلمة المرور' : 'Password'}
+            </label>
+            <div className="relative">
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 pl-9 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#68142c]"
+              />
+              <div className="absolute top-2.5 left-3 text-slate-400">
+                <Lock size={16} />
+              </div>
+            </div>
+          </div>
+
+          {/* Toggle admin switch */}
+          <div className="flex items-center justify-between pt-1">
+            <button
+              type="button"
+              onClick={() => { setIsAdminMode(!isAdminMode); setError(null); }}
+              className="text-xs font-bold text-amber-900 hover:text-[#68142c] flex items-center gap-1"
+            >
+              <Shield size={13} />
+              <span>{isAdminMode ? (isAr ? 'العودة لتسجيل دخول المستخدمين' : 'Back to User Login') : (isAr ? 'تسجيل دخول كمسؤول نظام (Admin)' : 'Admin Login')}</span>
+            </button>
+          </div>
+
+          {/* Submit Button */}
+          <button
+            type="submit"
+            disabled={loading}
+            className={`w-full py-2.5 px-4 rounded-xl text-white font-bold text-sm shadow-md transition-all active:scale-98 flex items-center justify-center gap-2 ${
+              isAdminMode ? 'bg-slate-900 hover:bg-slate-800' : 'bg-[#68142c] hover:bg-[#520f23]'
+            }`}
+          >
+            {loading ? (
+              <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+            ) : (
+              <>
+                {isAdminMode ? <Shield size={16} /> : <LogIn size={16} />}
+                <span>
+                  {isAdminMode
+                    ? (isAr ? 'دخول لوحة التحكم' : 'Enter Control Panel')
+                    : mode === 'login'
+                    ? (isAr ? 'تسجيل الدخول' : 'Sign In')
+                    : (isAr ? 'تأكيد التسجيل' : 'Create Account')}
+                </span>
+              </>
+            )}
+          </button>
+        </form>
+
+        {/* Quick Demo Logins Section */}
+        <div className="bg-slate-50 p-4 border-t border-slate-200">
+          <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 text-center">
+            {isAr ? 'الدخول السريع التجريبي (1-Click Demo Login)' : 'Quick 1-Click Demo Login'}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={handleQuickDemoUser}
+              className="p-2 bg-white hover:bg-amber-50 border border-slate-200 hover:border-amber-400 rounded-lg text-xs font-bold text-slate-800 flex items-center gap-2 transition-all shadow-2xs"
+            >
+              <div className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-900 flex items-center justify-center shrink-0">
+                <UserCheck size={14} />
+              </div>
+              <div className="text-right flex-1 truncate">
+                <span className="block text-[11px] text-amber-900 font-bold truncate">حمزة الشيف</span>
+                <span className="block text-[9px] text-slate-500">{isAr ? 'معلن / باحث عن عمل' : 'Demo User'}</span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleQuickDemoAdmin}
+              className="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-900 rounded-lg text-xs font-bold text-white flex items-center gap-2 transition-all shadow-2xs"
+            >
+              <div className="w-6 h-6 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center shrink-0">
+                <Shield size={14} />
+              </div>
+              <div className="text-right flex-1 truncate">
+                <span className="block text-[11px] text-amber-300 font-bold truncate">{isAr ? 'مسؤول النظام' : 'System Admin'}</span>
+                <span className="block text-[9px] text-slate-300">{isAr ? 'لوحة التحكم الكاملة' : 'Full Control Panel'}</span>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
