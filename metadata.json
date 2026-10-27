@@ -1,0 +1,6 @@
+{
+  "name": "عون يمن - Awn Yemen",
+  "description": "منصة الإعلانات المبوبة وسوق الأعمال والخدمات في اليمن | Classifieds Marketplace Platform for Yemen",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
