@@ -331,15 +331,17 @@ export default function App() {
       }
       return true;
     }).sort((a, b) => {
+      // 1. Featured / Premium listings ALWAYS rank #1 at the top in category listings & searches
+      if (a.status === 'premium' && b.status !== 'premium') return -1;
+      if (b.status === 'premium' && a.status !== 'premium') return 1;
+
+      // 2. Secondary sorts
       if (filterTab === 'price_low') {
         return (a.price || 0) - (b.price || 0);
       }
       if (filterTab === 'price_high') {
         return (b.price || 0) - (a.price || 0);
       }
-      // Default: featured first, then newest
-      if (a.status === 'premium' && b.status !== 'premium') return -1;
-      if (b.status === 'premium' && a.status !== 'premium') return 1;
       return 0;
     });
   }, [listings, selectedCategoryId, selectedSubCategoryId, selectedRegion, searchQuery, filterTab]);
@@ -443,6 +445,86 @@ export default function App() {
             </div>
           </div>
         </div>
+
+        {/* Featured Ads VIP Spotlight Bar (Visible on Home Page) */}
+        {!selectedCategoryId && !searchQuery.trim() && listings.some((l) => l.status === 'premium') && (
+          <div className="mb-6 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-slate-50 border border-amber-300/80 rounded-2xl p-4 shadow-xs">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 bg-amber-500 text-slate-950 rounded-lg shadow-xs">
+                  <Sparkles size={16} className="fill-slate-950" />
+                </span>
+                <div>
+                  <h2 className="font-black text-slate-900 text-sm sm:text-base flex items-center gap-1.5 font-['Cairo']">
+                    <span>{isAr ? 'إعلانات مميزة VIP ★' : 'VIP Featured Listings ★'}</span>
+                    <span className="text-[10px] bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded-full">
+                      {isAr ? 'مثبتة بالصفحة الرئيسية' : 'Pinned on Home'}
+                    </span>
+                  </h2>
+                  <p className="text-[11px] text-slate-500">
+                    {isAr
+                      ? 'إعلانات معتمدة ومميزة تحظى بأعلى أولوية ظهور ومشاهدات في منصة عون يمن'
+                      : 'Verified featured listings with top priority and visibility'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setFilterTab('premium')}
+                className="text-xs font-bold text-amber-700 hover:text-amber-800 flex items-center gap-1"
+              >
+                <span>{isAr ? 'عرض كل المميز' : 'View All'}</span>
+                <span>←</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {listings
+                .filter((item) => item.status === 'premium')
+                .slice(0, 3)
+                .map((featuredItem) => (
+                  <div
+                    key={`vip-${featuredItem.id}`}
+                    onClick={() => {
+                      if (!currentUser) {
+                        handleRequireLogin(featuredItem, 'details');
+                      } else {
+                        handleOpenDetails(featuredItem);
+                      }
+                    }}
+                    className="bg-white rounded-xl border border-amber-300/90 hover:border-amber-400 p-3 shadow-xs hover:shadow-md transition-all cursor-pointer flex gap-3 group relative overflow-hidden ring-1 ring-amber-400/20"
+                  >
+                    <div className="w-20 h-20 rounded-lg bg-slate-100 overflow-hidden shrink-0 relative">
+                      <img
+                        src={featuredItem.media[0]?.url || '/assets/aistudio/WhatsApp_Image_2026-10-26_at_10.38.17_PM_f6350e73.jpeg'}
+                        alt={featuredItem.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      />
+                      <span className="absolute top-1 right-1 bg-amber-500 text-slate-950 text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs">
+                        ★ مميز
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0 flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1">
+                          <span className="font-bold text-[#68142c] truncate">{featuredItem.subCategoryNameAr}</span>
+                          <span className="truncate">{featuredItem.cityNameAr}</span>
+                        </div>
+                        <h4 className="font-bold text-slate-900 text-xs line-clamp-2 group-hover:text-[#68142c] transition-colors leading-snug">
+                          {featuredItem.title}
+                        </h4>
+                      </div>
+                      <div className="flex items-center justify-between mt-1 text-[11px]">
+                        <span className="font-black text-amber-700">
+                          {featuredItem.price ? `${featuredItem.price.toLocaleString()} ${featuredItem.currency}` : (isAr ? 'حسب الاتفاق' : 'Negotiable')}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-semibold truncate">{featuredItem.sellerName}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
 
         {/* Layout Grid: Left Sidebar Categories (or top on mobile) & Right Listings Feed */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -751,6 +833,14 @@ export default function App() {
         initialSection={postAdSection}
         initialSubCatId={selectedSubCategoryId}
         lang={lang}
+        existingListings={listings}
+        currentUser={currentUser}
+        onUpdateUser={(updated) => {
+          setCurrentUser(updated);
+          try {
+            localStorage.setItem('awn_current_user', JSON.stringify(updated));
+          } catch {}
+        }}
       />
 
       {/* Location Selector Modal */}

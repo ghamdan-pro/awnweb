@@ -55,7 +55,11 @@ export const ListingCard: React.FC<ListingCardProps> = ({
   return (
     <div
       onClick={handleCardClick}
-      className="bg-white rounded-xl border border-slate-200/90 shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden cursor-pointer flex flex-col sm:flex-row group"
+      className={`bg-white rounded-xl border transition-all duration-200 overflow-hidden cursor-pointer flex flex-col sm:flex-row group ${
+        listing.status === 'premium'
+          ? 'border-amber-400/90 shadow-xs hover:shadow-md ring-1 ring-amber-400/30'
+          : 'border-slate-200/90 shadow-xs hover:shadow-md'
+      }`}
     >
 
       {/* Thumbnail */}

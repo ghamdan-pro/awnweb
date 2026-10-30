@@ -13,10 +13,14 @@ import {
   Briefcase,
   Layers,
   Award,
+  CreditCard,
+  Wallet,
 } from 'lucide-react';
 import { CATEGORIES, Category, SubCategory } from '../data/categoriesData';
 import { Region, City } from '../data/yemenRegions';
 import { Listing, ListingSectionType } from '../data/mockListings';
+import { AuthUser } from '../types/auth';
+import { moderateAdContent } from '../utils/contentModeration';
 
 interface PostAdModalProps {
   isOpen: boolean;
@@ -27,6 +31,9 @@ interface PostAdModalProps {
   initialSection?: ListingSectionType;
   initialSubCatId?: string;
   lang: 'ar' | 'en';
+  existingListings?: Listing[];
+  currentUser?: AuthUser | null;
+  onUpdateUser?: (updated: AuthUser) => void;
 }
 
 export const PostAdModal: React.FC<PostAdModalProps> = ({
@@ -38,6 +45,9 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
   initialSection,
   initialSubCatId,
   lang,
+  existingListings = [],
+  currentUser = null,
+  onUpdateUser,
 }) => {
   const isAr = lang === 'ar';
 
@@ -75,6 +85,7 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
 
   // Validation errors & Phone consent
   const [phoneConsent, setPhoneConsent] = useState(false);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
 
@@ -119,6 +130,13 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
         ? 'يجب الموافقة على مشاركة رقم هاتفك مع هذا الإعلان للتواصل قبل النشر'
         : 'Consent to share phone number with listing is required';
     }
+
+    // Automated Moderation Check (Anti-Duplication, Profanity, Immoral, Political, Images)
+    const modResult = moderateAdContent(title, description, phone, uploadedImages, existingListings, isAr);
+    if (!modResult.isValid) {
+      errs.moderation = modResult.reason || (isAr ? 'المحتوى لا يطابق معايير النشر المعتمدة' : 'Moderation failed');
+    }
+
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -264,6 +282,24 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
             <div className="bg-emerald-50 border border-emerald-300 text-emerald-800 p-3 rounded-xl flex items-center gap-2 text-sm font-bold animate-in fade-in">
               <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
               <span>{successNotice}</span>
+            </div>
+          )}
+
+          {/* Automated Content Moderation Rejection Alert */}
+          {errors.moderation && (
+            <div className="bg-rose-50 border-2 border-rose-400 text-rose-950 p-4 rounded-xl flex items-start gap-3 text-xs font-bold shadow-xs animate-in fade-in">
+              <AlertTriangle size={20} className="text-rose-600 shrink-0 mt-0.5" />
+              <div className="space-y-1 text-right">
+                <span className="font-black text-sm block text-rose-700">
+                  {isAr ? 'تنبيه نظام الفحص والموافقة الآلية:' : 'Automated Moderation Alert:'}
+                </span>
+                <p className="text-xs text-rose-800 leading-relaxed">{errors.moderation}</p>
+                <p className="text-[11px] text-slate-500 font-normal mt-1">
+                  {isAr
+                    ? 'يخضع كل إعلان لفحص آلي ذكي لضمان عدم تكرار المنشورات، وخلوها من الألفاظ غير الأخلاقية، الشتم والسب، أو الشعارات والنزاعات السياسية.'
+                    : 'All listings are automatically screened for duplicates, profanity, immoral or political terms.'}
+                </p>
+              </div>
             </div>
           )}
 
@@ -678,32 +714,128 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
         </div>
 
         {/* Modal Footer Buttons */}
-        <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2 shrink-0">
+        <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-200 text-xs sm:text-sm font-bold transition-colors"
+            className="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-200 text-xs sm:text-sm font-bold transition-colors order-1"
           >
             {isAr ? 'إلغاء' : 'Cancel'}
           </button>
 
-          <button
-            type="button"
-            onClick={() => handlePublish('draft')}
-            className="px-4 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs sm:text-sm font-bold transition-colors"
-          >
-            {isAr ? 'حفظ كمسودة' : 'Save Draft'}
-          </button>
+          <div className="flex items-center gap-2 flex-wrap order-2">
+            <button
+              type="button"
+              onClick={() => handlePublish('draft')}
+              className="px-3.5 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs sm:text-sm font-bold transition-colors"
+            >
+              {isAr ? 'حفظ كمسودة' : 'Save Draft'}
+            </button>
 
-          <button
-            type="button"
-            onClick={() => handlePublish('active')}
-            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 text-xs sm:text-sm font-black shadow-md transition-all active:scale-95"
-          >
-            {isAr ? 'نشر الإعلان الآن' : 'Publish Ad Now'}
-          </button>
+            {/* Standard Free Publish */}
+            <button
+              type="button"
+              onClick={() => handlePublish('active')}
+              className="px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm font-bold shadow-sm transition-all active:scale-95 flex items-center gap-1.5"
+            >
+              <span>{isAr ? 'نشر مجاني' : 'Publish Free'}</span>
+            </button>
+
+            {/* Featured Publish with Fee Payment */}
+            <button
+              type="button"
+              onClick={() => {
+                if (validate()) {
+                  setShowPremiumModal(true);
+                }
+              }}
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 text-xs sm:text-sm font-black shadow-md transition-all active:scale-95 flex items-center gap-1.5 ring-2 ring-amber-400/50"
+            >
+              <Sparkles size={16} className="fill-slate-950" />
+              <span>{isAr ? 'نشر مميز ★ (3,000 ر.ي)' : 'Publish Featured ★'}</span>
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Featured Ad Fee Confirmation Modal */}
+      {showPremiumModal && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-amber-300 flex flex-col animate-in zoom-in-95 duration-150">
+            <div className="bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles size={20} className="fill-slate-950" />
+                <h3 className="font-black text-base font-['Cairo']">
+                  {isAr ? 'تفعيل وترقية الإعلان إلى "مميز ★"' : 'Activate Featured Ad'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPremiumModal(false)}
+                className="p-1 rounded-full hover:bg-black/10 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 text-xs">
+              <div className="bg-amber-50 p-4 rounded-xl border border-amber-200 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-700">{isAr ? 'رسوم الترقية لإعلان مميز:' : 'Featured Ad Fee:'}</span>
+                  <span className="text-base font-black text-amber-950">3,000 ر.ي (أو 5 $)</span>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t border-amber-200/80">
+                  <span className="text-slate-500 font-semibold">{isAr ? 'رصيد محفظتك المتاح:' : 'Your Wallet Balance:'}</span>
+                  <span className="font-black text-emerald-800 text-sm">
+                    {(currentUser?.walletBalanceYer || 5000).toLocaleString()} ر.ي
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2 bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-right">
+                <span className="font-black text-slate-900 block text-xs">
+                  {isAr ? 'مزايا وأولوية الإعلان المميز:' : 'Featured Ad Advantages:'}
+                </span>
+                <ul className="space-y-1.5 text-slate-600 list-disc list-inside leading-relaxed text-[11px]">
+                  <li>{isAr ? 'ظهور مباشر في شريط الإعلانات المميزة بالصفحة الرئيسية.' : 'Featured directly in Top Home Page bar.'}</li>
+                  <li>{isAr ? 'الترتيب الأول (#1) عند الدخول بإعلانات القسم ونتائج البحث.' : 'Ranked #1 in category listings and search.'}</li>
+                  <li>{isAr ? 'إطار ذهبي وشارة مميزة ★ تلفت أنظار المشترين فوراً.' : 'Prominent golden star badge.'}</li>
+                  <li>{isAr ? 'مضاعفة عدد المشاهدات والنقرات حتى 8 أضعاف.' : 'Up to 8x higher impressions and calls.'}</li>
+                </ul>
+              </div>
+
+              <div className="pt-2 flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (currentUser && onUpdateUser) {
+                      const currentYer = currentUser.walletBalanceYer || 5000;
+                      onUpdateUser({
+                        ...currentUser,
+                        walletBalanceYer: Math.max(0, currentYer - 3000),
+                      });
+                    }
+                    setShowPremiumModal(false);
+                    handlePublish('premium');
+                  }}
+                  className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black rounded-xl shadow-md transition-all active:scale-98 flex items-center justify-center gap-2 text-xs sm:text-sm"
+                >
+                  <CreditCard size={16} />
+                  <span>{isAr ? 'تأكيد دفع 3,000 ر.ي وتفعيل الإعلان المميز' : 'Confirm 3,000 YER & Publish Featured'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowPremiumModal(false)}
+                  className="w-full py-2 text-slate-500 hover:text-slate-800 font-bold transition-colors text-center"
+                >
+                  {isAr ? 'إلغاء والعودة للنشر المجاني' : 'Cancel and return to free posting'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
