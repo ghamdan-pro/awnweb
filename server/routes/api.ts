@@ -4,10 +4,16 @@ import {
   searchListings,
   getListingById,
   createListing,
+  updateListing,
+  deleteListing,
+  updateListingStatus,
+  trackListingClick,
+  trackListingView,
 } from '../controllers/listingsController.js';
 import { getCategories } from '../controllers/categoriesController.js';
 import { getRegions } from '../controllers/regionsController.js';
 import { getChatRooms, sendMessage } from '../controllers/chatController.js';
+import { getAnalyticsStats, trackPlatformVisit } from '../controllers/analyticsController.js';
 
 const router = Router();
 
@@ -15,10 +21,19 @@ const router = Router();
 router.post('/auth/request-otp', requestOtp);
 router.post('/auth/verify-otp', verifyOtp);
 
+// Analytics Endpoints (Visitors, Views, Clicks)
+router.get('/analytics/stats', getAnalyticsStats);
+router.post('/analytics/track-visit', trackPlatformVisit);
+
 // Listings Endpoints
 router.get('/listings/search', searchListings);
 router.get('/listings/:id', getListingById);
 router.post('/listings', createListing);
+router.put('/listings/:id', updateListing);
+router.delete('/listings/:id', deleteListing);
+router.patch('/listings/:id/status', updateListingStatus);
+router.post('/listings/:id/click', trackListingClick);
+router.post('/listings/:id/view', trackListingView);
 
 // Taxonomy Endpoints
 router.get('/categories', getCategories);
@@ -44,3 +59,4 @@ router.get('/health', async (req, res) => {
 });
 
 export default router;
+

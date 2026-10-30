@@ -1,30 +1,51 @@
 import React from 'react';
-import { MapPin, Phone, MessageCircle, Bookmark, Star, ShieldCheck, Clock } from 'lucide-react';
+import { MapPin, Phone, MessageCircle, Bookmark, Star, ShieldCheck, Clock, Lock } from 'lucide-react';
 import { Listing } from '../data/mockListings';
+import { AuthUser } from '../types/auth';
 
 interface ListingCardProps {
   listing: Listing;
+  currentUser: AuthUser | null;
   onOpenDetails: (listing: Listing) => void;
+  onRequireLogin: (listing: Listing, reason: 'details' | 'contact') => void;
   onToggleBookmark: (id: string, e: React.MouseEvent) => void;
   lang: 'ar' | 'en';
 }
 
 export const ListingCard: React.FC<ListingCardProps> = ({
   listing,
+  currentUser,
   onOpenDetails,
+  onRequireLogin,
   onToggleBookmark,
-  lang
+  lang,
 }) => {
   const isAr = lang === 'ar';
   const primaryMedia = listing.media.find((m) => m.isPrimary) || listing.media[0];
 
+  const handleCardClick = () => {
+    if (!currentUser) {
+      onRequireLogin(listing, 'details');
+    } else {
+      onOpenDetails(listing);
+    }
+  };
+
   const handleCall = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!currentUser) {
+      onRequireLogin(listing, 'contact');
+      return;
+    }
     window.location.href = `tel:${listing.contactPhone.replace(/\s+/g, '')}`;
   };
 
   const handleWhatsApp = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!currentUser) {
+      onRequireLogin(listing, 'contact');
+      return;
+    }
     if (!listing.whatsappNumber) return;
     const cleanNumber = listing.whatsappNumber.replace(/[^0-9]/g, '');
     const text = encodeURIComponent(`مرحباً، بخصوص إعلانك على عون يمن: "${listing.title}"`);
@@ -33,9 +54,10 @@ export const ListingCard: React.FC<ListingCardProps> = ({
 
   return (
     <div
-      onClick={() => onOpenDetails(listing)}
+      onClick={handleCardClick}
       className="bg-white rounded-xl border border-slate-200/90 shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden cursor-pointer flex flex-col sm:flex-row group"
     >
+
       {/* Thumbnail */}
       <div className="relative sm:w-52 h-44 sm:h-auto bg-slate-100 shrink-0 overflow-hidden">
         {primaryMedia ? (
@@ -159,11 +181,15 @@ export const ListingCard: React.FC<ListingCardProps> = ({
 
             <button
               onClick={handleCall}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#2e7d32] hover:bg-[#256828] text-white text-xs font-bold shadow-xs transition-colors"
-              title={isAr ? 'اتصال بالمعلن' : 'Call Seller'}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold shadow-xs transition-colors ${
+                !currentUser
+                  ? 'bg-slate-800 hover:bg-slate-900 text-amber-300 border border-slate-700'
+                  : 'bg-[#2e7d32] hover:bg-[#256828] text-white'
+              }`}
+              title={!currentUser ? (isAr ? 'سجل الدخول للاتصال بالمعلن' : 'Login to call seller') : (isAr ? 'اتصال بالمعلن' : 'Call Seller')}
             >
-              <Phone size={13} />
-              <span>{isAr ? 'اتصال' : 'Call'}</span>
+              {!currentUser ? <Lock size={12} className="text-amber-400" /> : <Phone size={13} />}
+              <span>{!currentUser ? (isAr ? 'عرض الرقم' : 'Show Phone') : (isAr ? 'اتصال' : 'Call')}</span>
             </button>
           </div>
         </div>

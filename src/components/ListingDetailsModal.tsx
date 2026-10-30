@@ -20,20 +20,27 @@ import {
   Layers,
   Calendar,
   CheckCircle2,
+  Lock,
+  LogIn,
 } from 'lucide-react';
 import { Listing } from '../data/mockListings';
+import { AuthUser } from '../types/auth';
 
 interface ListingDetailsModalProps {
   listing: Listing | null;
+  currentUser: AuthUser | null;
   onClose: () => void;
   onOpenChat: (listing: Listing) => void;
+  onOpenLogin: () => void;
   lang: 'ar' | 'en';
 }
 
 export const ListingDetailsModal: React.FC<ListingDetailsModalProps> = ({
   listing,
+  currentUser,
   onClose,
   onOpenChat,
+  onOpenLogin,
   lang,
 }) => {
   const [activeImgIndex, setActiveImgIndex] = useState(0);
@@ -487,33 +494,58 @@ export const ListingDetailsModal: React.FC<ListingDetailsModalProps> = ({
                 </div>
 
                 {/* Primary Direct Contact Buttons */}
-                <div className="space-y-2 pt-2">
-                  <button
-                    onClick={handleCall}
-                    className="w-full flex items-center justify-center gap-2 bg-[#2e7d32] hover:bg-[#256828] text-white font-bold py-3 px-4 rounded-xl shadow-md transition-colors text-sm active:scale-95"
-                  >
-                    <Phone size={18} />
-                    <span>{isAr ? `اتصال هاتفي: ${listing.contactPhone}` : `Call: ${listing.contactPhone}`}</span>
-                  </button>
-
-                  {listing.whatsappNumber && (
+                {currentUser ? (
+                  <div className="space-y-2 pt-2">
                     <button
-                      onClick={handleWhatsApp}
-                      className="w-full flex items-center justify-center gap-2 bg-[#25d366] hover:bg-[#20ba59] text-white font-bold py-3 px-4 rounded-xl shadow-md transition-colors text-sm active:scale-95"
+                      onClick={handleCall}
+                      className="w-full flex items-center justify-center gap-2 bg-[#2e7d32] hover:bg-[#256828] text-white font-bold py-3 px-4 rounded-xl shadow-md transition-colors text-sm active:scale-95"
                     >
-                      <MessageCircle size={18} />
-                      <span>{isAr ? 'مراسلة عبر واتساب' : 'Chat via WhatsApp'}</span>
+                      <Phone size={18} />
+                      <span>{isAr ? `اتصال هاتفي: ${listing.contactPhone}` : `Call: ${listing.contactPhone}`}</span>
                     </button>
-                  )}
 
-                  <button
-                    onClick={() => onOpenChat(listing)}
-                    className="w-full flex items-center justify-center gap-2 bg-white hover:bg-slate-50 text-[#68142c] font-bold py-2.5 px-4 rounded-xl border-2 border-[#68142c] transition-colors text-sm"
-                  >
-                    <MessageSquare size={17} />
-                    <span>{isAr ? 'محادثة داخلية في التطبيق' : 'Chat in App'}</span>
-                  </button>
-                </div>
+                    {listing.whatsappNumber && (
+                      <button
+                        onClick={handleWhatsApp}
+                        className="w-full flex items-center justify-center gap-2 bg-[#25d366] hover:bg-[#20ba59] text-white font-bold py-3 px-4 rounded-xl shadow-md transition-colors text-sm active:scale-95"
+                      >
+                        <MessageCircle size={18} />
+                        <span>{isAr ? 'مراسلة عبر واتساب' : 'Chat via WhatsApp'}</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => onOpenChat(listing)}
+                      className="w-full flex items-center justify-center gap-2 bg-white hover:bg-slate-50 text-[#68142c] font-bold py-2.5 px-4 rounded-xl border-2 border-[#68142c] transition-colors text-sm"
+                    >
+                      <MessageSquare size={17} />
+                      <span>{isAr ? 'محادثة داخلية في التطبيق' : 'Chat in App'}</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center space-y-3 pt-3">
+                    <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-900 mx-auto flex items-center justify-center">
+                      <Lock size={18} />
+                    </div>
+                    <div>
+                      <h5 className="font-bold text-xs text-amber-950">
+                        {isAr ? 'بيانات التواصل مع الناشر مقفلة' : 'Publisher contact details locked'}
+                      </h5>
+                      <p className="text-[11px] text-amber-900/80 mt-1 leading-normal">
+                        {isAr
+                          ? 'أرقام الهاتف والواتساب والمحادثة تظهر فقط بعد تسجيل الدخول لحماية خصوصية المعلنين.'
+                          : 'Phone & WhatsApp are hidden until you log in.'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={onOpenLogin}
+                      className="w-full py-2.5 bg-[#68142c] hover:bg-[#520f23] text-white text-xs font-bold rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                    >
+                      <LogIn size={15} />
+                      <span>{isAr ? 'تسجيل الدخول لعرض أرقام التواصل' : 'Log In to View Contact Info'}</span>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -521,31 +553,43 @@ export const ListingDetailsModal: React.FC<ListingDetailsModalProps> = ({
 
         {/* Mobile Viewport: Fixed Bottom Contact Bar */}
         <div className="lg:hidden fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-slate-200 px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.15)] flex items-center gap-2">
-          <button
-            onClick={handleCall}
-            className="flex-1 flex items-center justify-center gap-2 bg-[#2e7d32] active:bg-[#256828] text-white font-black py-3 px-3 rounded-xl shadow-md text-sm transition-transform active:scale-95"
-          >
-            <Phone size={18} />
-            <span>{isAr ? 'اتصال هاتفي' : 'Call'}</span>
-          </button>
+          {currentUser ? (
+            <>
+              <button
+                onClick={handleCall}
+                className="flex-1 flex items-center justify-center gap-2 bg-[#2e7d32] active:bg-[#256828] text-white font-black py-3 px-3 rounded-xl shadow-md text-sm transition-transform active:scale-95"
+              >
+                <Phone size={18} />
+                <span>{isAr ? 'اتصال هاتفي' : 'Call'}</span>
+              </button>
 
-          {listing.whatsappNumber && (
+              {listing.whatsappNumber && (
+                <button
+                  onClick={handleWhatsApp}
+                  className="p-3 bg-[#25d366] text-white rounded-xl shadow-md transition-transform active:scale-95 flex items-center justify-center"
+                  title={isAr ? 'واتساب' : 'WhatsApp'}
+                >
+                  <MessageCircle size={20} />
+                </button>
+              )}
+
+              <button
+                onClick={() => onOpenChat(listing)}
+                className="flex-1 flex items-center justify-center gap-1.5 bg-white border-2 border-[#68142c] text-[#68142c] font-black py-2.5 px-3 rounded-xl text-xs sm:text-sm transition-transform active:scale-95"
+              >
+                <MessageSquare size={17} />
+                <span>{isAr ? 'محادثة داخلية' : 'Chat in App'}</span>
+              </button>
+            </>
+          ) : (
             <button
-              onClick={handleWhatsApp}
-              className="p-3 bg-[#25d366] text-white rounded-xl shadow-md transition-transform active:scale-95 flex items-center justify-center"
-              title={isAr ? 'واتساب' : 'WhatsApp'}
+              onClick={onOpenLogin}
+              className="w-full flex items-center justify-center gap-2 bg-[#68142c] hover:bg-[#520f23] text-white font-black py-3 px-4 rounded-xl shadow-md text-xs sm:text-sm active:scale-98"
             >
-              <MessageCircle size={20} />
+              <Lock size={16} className="text-amber-300" />
+              <span>{isAr ? 'سجل الدخول لعرض رقم الناشر والتواصل' : 'Log In to View Phone & Contact'}</span>
             </button>
           )}
-
-          <button
-            onClick={() => onOpenChat(listing)}
-            className="flex-1 flex items-center justify-center gap-1.5 bg-white border-2 border-[#68142c] text-[#68142c] font-black py-2.5 px-3 rounded-xl text-xs sm:text-sm transition-transform active:scale-95"
-          >
-            <MessageSquare size={17} />
-            <span>{isAr ? 'محادثة داخلية' : 'Chat in App'}</span>
-          </button>
         </div>
       </div>
     </div>

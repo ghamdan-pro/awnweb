@@ -2,14 +2,17 @@ import React, { useState, useMemo } from 'react';
 import { ArrowRight, Briefcase, UserCheck, Building2, PlusCircle, Filter, Sparkles, MapPin, Search } from 'lucide-react';
 import { Category, SubCategory } from '../data/categoriesData';
 import { Listing, ListingSectionType } from '../data/mockListings';
+import { AuthUser } from '../types/auth';
 import { CompactPublisherCard } from './CompactPublisherCard';
 
 interface SubcategoryDetailViewProps {
   category: Category;
   subCategory: SubCategory;
   listings: Listing[];
+  currentUser: AuthUser | null;
   onBack: () => void;
   onOpenDetails: (listing: Listing) => void;
+  onRequireLogin: (listing: Listing, reason: 'details' | 'contact') => void;
   onOpenPostAd: (preselectedSection?: ListingSectionType) => void;
   lang: 'ar' | 'en';
 }
@@ -18,8 +21,10 @@ export const SubcategoryDetailView: React.FC<SubcategoryDetailViewProps> = ({
   category,
   subCategory,
   listings,
+  currentUser,
   onBack,
   onOpenDetails,
+  onRequireLogin,
   onOpenPostAd,
   lang,
 }) => {
@@ -287,7 +292,9 @@ export const SubcategoryDetailView: React.FC<SubcategoryDetailViewProps> = ({
             <CompactPublisherCard
               key={listing.id}
               listing={listing}
+              currentUser={currentUser}
               onOpenDetails={onOpenDetails}
+              onRequireLogin={onRequireLogin}
               lang={lang}
             />
           ))}

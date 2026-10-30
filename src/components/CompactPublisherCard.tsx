@@ -1,33 +1,55 @@
 import React from 'react';
-import { MapPin, Phone, MessageCircle, Star, ShieldCheck, Briefcase, UserCheck, Building2, ChevronLeft } from 'lucide-react';
+import { MapPin, Phone, MessageCircle, Star, ShieldCheck, Briefcase, UserCheck, Building2, ChevronLeft, Lock } from 'lucide-react';
 import { Listing } from '../data/mockListings';
+import { AuthUser } from '../types/auth';
 
 interface CompactPublisherCardProps {
   listing: Listing;
+  currentUser: AuthUser | null;
   onOpenDetails: (listing: Listing) => void;
+  onRequireLogin: (listing: Listing, reason: 'details' | 'contact') => void;
   lang: 'ar' | 'en';
 }
 
 export const CompactPublisherCard: React.FC<CompactPublisherCardProps> = ({
   listing,
+  currentUser,
   onOpenDetails,
+  onRequireLogin,
   lang,
 }) => {
   const isAr = lang === 'ar';
   const primaryMedia = listing.media.find((m) => m.isPrimary) || listing.media[0];
 
+  const handleCardClick = () => {
+    if (!currentUser) {
+      onRequireLogin(listing, 'details');
+    } else {
+      onOpenDetails(listing);
+    }
+  };
+
   const handleCall = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!currentUser) {
+      onRequireLogin(listing, 'contact');
+      return;
+    }
     window.location.href = `tel:${listing.contactPhone.replace(/\s+/g, '')}`;
   };
 
   const handleWhatsApp = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!currentUser) {
+      onRequireLogin(listing, 'contact');
+      return;
+    }
     if (!listing.whatsappNumber) return;
     const cleanNumber = listing.whatsappNumber.replace(/[^0-9]/g, '');
     const text = encodeURIComponent(`مرحباً أخي الكريم، أتواصل معك بخصوص إعلانك على عون يمن: "${listing.title}"`);
     window.open(`https://wa.me/${cleanNumber}?text=${text}`, '_blank');
   };
+
 
   // Badge styling based on sectionType
   const getBadgeInfo = () => {
@@ -63,7 +85,7 @@ export const CompactPublisherCard: React.FC<CompactPublisherCardProps> = ({
 
   return (
     <div
-      onClick={() => onOpenDetails(listing)}
+      onClick={handleCardClick}
       className="bg-white rounded-xl border border-slate-200 shadow-xs hover:shadow-md hover:border-[#68142c]/40 transition-all duration-200 p-3 sm:p-4 cursor-pointer flex flex-col sm:flex-row gap-3 sm:gap-4 group relative"
     >
       {/* Compact Image */}

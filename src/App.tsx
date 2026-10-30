@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Header } from './components/Header';
 import { CategoryNav } from './components/CategoryNav';
 import { ListingCard } from './components/ListingCard';
@@ -12,11 +12,11 @@ import { PostAdModal } from './components/PostAdModal';
 import { LocationSelectorModal } from './components/LocationSelectorModal';
 import { AccountSettingsModal } from './components/AccountSettingsModal';
 import { AuthModal } from './components/AuthModal';
-import { AdminDashboardModal } from './components/AdminDashboardModal';
+import { AdminDashboardPage } from './components/AdminDashboardPage';
 import { MourjanWarningModals } from './components/MourjanWarningModals';
 import { ChatModal } from './components/ChatModal';
 import { SubcategoryDetailView } from './components/SubcategoryDetailView';
-import { AuthUser } from './types/auth';
+import { AuthUser, DEMO_USERS } from './types/auth';
 
 import { CATEGORIES, Category, SubCategory } from './data/categoriesData';
 import { COUNTRIES, Country, Region, City } from './data/yemenRegions';
@@ -38,7 +38,9 @@ import {
   Package,
   Layers,
   Smartphone,
-  MapPin
+  MapPin,
+  Lock,
+  LogIn
 } from 'lucide-react';
 
 export default function App() {
@@ -46,8 +48,39 @@ export default function App() {
   const [lang, setLang] = useState<'ar' | 'en'>('ar');
   const isAr = lang === 'ar';
 
+  // Current view: 'home' for standard website marketplace vs 'admin' for dedicated Admin Control Panel
+  const [currentView, setCurrentView] = useState<'home' | 'admin'>(() => {
+    if (typeof window !== 'undefined' && window.location.hash.includes('admin')) {
+      return 'admin';
+    }
+    return 'home';
+  });
+
+  // Listen for hash changes to allow direct navigation to #/admin or #/home
+  useEffect(() => {
+    const handleHashChange = () => {
+      if (window.location.hash.includes('admin')) {
+        setCurrentView('admin');
+      } else {
+        setCurrentView('home');
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
   // Viewport mode: Responsive desktop web vs Mobile Device Shell simulation
   const [viewportMode, setViewportMode] = useState<'mobile' | 'desktop'>('desktop');
+
+  // User Authentication State (Persisted in localStorage)
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
+    try {
+      const saved = localStorage.getItem('awn_current_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
 
   // Regional state (defaults to Yemen - Sanaa)
   const [selectedCountry, setSelectedCountry] = useState<Country>(COUNTRIES[0]);
@@ -65,16 +98,19 @@ export default function App() {
   // Listings data
   const [listings, setListings] = useState<Listing[]>(INITIAL_LISTINGS);
 
-  // Offline-First / Cache-First Stale-While-Revalidate Engine
-  React.useEffect(() => {
-    // 1. Instant 0ms load from IndexedDB
+  // Offline-First / Cache-First Stale-While-Revalidate Engine & Website Visitor Tracking
+  useEffect(() => {
+    // 1. Record Website Visitor Count
+    apiService.trackVisit('web').catch(() => {});
+
+    // 2. Instant 0ms load from IndexedDB
     localCacheDb.getAllListings().then((cached) => {
       if (cached && cached.length > 0) {
         setListings(cached);
       }
     });
 
-    // 2. Background Revalidation from Backend API / Supabase
+    // 3. Background Revalidation from Backend API / Supabase
     apiService.getListings().then((fresh) => {
       if (fresh && fresh.length > 0) {
         setListings(fresh);
@@ -89,11 +125,112 @@ export default function App() {
   const [postAdSection, setPostAdSection] = useState<ListingSectionType | undefined>(undefined);
   const [isRegionModalOpen, setIsRegionModalOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalReason, setAuthModalReason] = useState<string | null>(null);
+  const [pendingActionAfterLogin, setPendingActionAfterLogin] = useState<(() => void) | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatListing, setChatListing] = useState<Listing | null>(null);
 
   // Warning Popups (from Mourjan screenshots)
   const [warningType, setWarningType] = useState<'scam_warning' | 'publishing_rules' | null>(null);
+
+  // Handle successful login
+  const handleLoginSuccess = (user: AuthUser) => {
+    setCurrentUser(user);
+    try {
+      localStorage.setItem('awn_current_user', JSON.stringify(user));
+    } catch {}
+    setIsAuthModalOpen(false);
+    setAuthModalReason(null);
+
+    // If the user was trying to perform an action (e.g. view details or post ad), resume it
+    if (pendingActionAfterLogin) {
+      const action = pendingActionAfterLogin;
+      setPendingActionAfterLogin(null);
+      setTimeout(() => action(), 100);
+    }
+  };
+
+  // Handle logout
+  const handleLogout = () => {
+    setCurrentUser(null);
+    try {
+      localStorage.removeItem('awn_current_user');
+    } catch {}
+    setIsAccountOpen(false);
+  };
+
+  // Restricted Action: Posting Ad requires authentication
+  const handleOpenPostAd = (preselectedSection?: ListingSectionType) => {
+    if (!currentUser) {
+      setAuthModalReason(
+        isAr
+          ? 'يرجى تسجيل الدخول أولاً لتتمكن من نشر إعلانك وحفظه في حسابك على عون يمن.'
+          : 'Please log in first to post and manage your listing.'
+      );
+      setPendingActionAfterLogin(() => () => {
+        if (preselectedSection) setPostAdSection(preselectedSection);
+        setIsPostAdOpen(true);
+      });
+      setIsAuthModalOpen(true);
+      return;
+    }
+    if (preselectedSection) setPostAdSection(preselectedSection);
+    setIsPostAdOpen(true);
+  };
+
+  // Restricted Action: Viewing ad details & seller contact requires authentication
+  const handleRequireLogin = (listing: Listing, reason: 'details' | 'contact') => {
+    // Record ad click count when user clicks to view details
+    apiService.trackListingClick(listing.id).catch(() => {});
+    setListings((prev) =>
+      prev.map((item) =>
+        item.id === listing.id ? { ...item, clicksCount: (item.clicksCount || 0) + 1 } : item
+      )
+    );
+
+    setAuthModalReason(
+      reason === 'contact'
+        ? isAr
+          ? `يرجى تسجيل الدخول أولاً للاتصال بالمعلن "${listing.sellerName}" أو مراسلته عبر واتساب.`
+          : 'Please log in to contact this seller via phone or WhatsApp.'
+        : isAr
+        ? `يرجى تسجيل الدخول للاطلاع على التفاصيل الكاملة لإعلان "${listing.title}" وأرقام التواصل.`
+        : 'Please log in to view full ad details and seller phone number.'
+    );
+
+    setPendingActionAfterLogin(() => () => {
+      // After login, record ad view and open details modal
+      apiService.trackListingView(listing.id).catch(() => {});
+      setListings((prev) =>
+        prev.map((item) =>
+          item.id === listing.id ? { ...item, viewsCount: (item.viewsCount || 0) + 1 } : item
+        )
+      );
+      setActiveDetailsListing(listing);
+    });
+
+    setIsAuthModalOpen(true);
+  };
+
+  // When logged-in user clicks on listing to view details
+  const handleOpenDetails = (listing: Listing) => {
+    // Increment clicks & views count
+    apiService.trackListingClick(listing.id).catch(() => {});
+    apiService.trackListingView(listing.id).catch(() => {});
+    setListings((prev) =>
+      prev.map((item) =>
+        item.id === listing.id
+          ? {
+              ...item,
+              viewsCount: (item.viewsCount || 0) + 1,
+              clicksCount: (item.clicksCount || 0) + 1,
+            }
+          : item
+      )
+    );
+    setActiveDetailsListing(listing);
+  };
 
   // Toggle Bookmark
   const handleToggleBookmark = (id: string, e: React.MouseEvent) => {
@@ -105,13 +242,32 @@ export default function App() {
 
   // Add new ad
   const handleAdCreated = async (newAd: Listing) => {
-    setListings((prev) => [newAd, ...prev]);
-    localCacheDb.putListings([newAd, ...listings]);
+    const updatedListings = [newAd, ...listings];
+    setListings(updatedListings);
+    localCacheDb.putListings(updatedListings);
     try {
       await apiService.createListing(newAd);
     } catch (e) {
       // Handled
     }
+  };
+
+  // Update listing from Admin Page
+  const handleUpdateListingFromAdmin = (updatedListing: Listing) => {
+    setListings((prev) => {
+      const updated = prev.map((item) => (item.id === updatedListing.id ? updatedListing : item));
+      localCacheDb.putListings(updated);
+      return updated;
+    });
+  };
+
+  // Delete listing from Admin Page
+  const handleDeleteListingFromAdmin = (id: string) => {
+    setListings((prev) => {
+      const updated = prev.filter((item) => item.id !== id);
+      localCacheDb.putListings(updated);
+      return updated;
+    });
   };
 
   // Filtered listings
@@ -159,6 +315,31 @@ export default function App() {
   const activeCategory = CATEGORIES.find((c) => c.id === selectedCategoryId);
   const activeSubCategory = activeCategory?.subcategories.find((s) => s.id === selectedSubCategoryId);
 
+  // If currently in Admin view, render dedicated Admin Dashboard Page!
+  if (currentView === 'admin') {
+    return (
+      <>
+        <AdminDashboardPage
+          onBackToSite={() => {
+            setCurrentView('home');
+            window.location.hash = '';
+          }}
+          currentUser={currentUser}
+          onLoginAsAdmin={(adminUser) => {
+            setCurrentUser(adminUser);
+            try {
+              localStorage.setItem('awn_current_user', JSON.stringify(adminUser));
+            } catch {}
+          }}
+          listings={listings}
+          onUpdateListing={handleUpdateListingFromAdmin}
+          onDeleteListing={handleDeleteListingFromAdmin}
+          lang={lang}
+        />
+      </>
+    );
+  }
+
   // App Content Component (can be rendered plain or inside phone shell)
   const appContent = (
     <div className={`min-h-screen bg-[#f4f5f7] flex flex-col ${isAr ? 'rtl font-[\'Cairo\']' : 'ltr'} text-right`}>
@@ -169,8 +350,17 @@ export default function App() {
         onOpenRegionModal={() => setIsRegionModalOpen(true)}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        onOpenPostAd={() => setIsPostAdOpen(true)}
+        onOpenPostAd={() => handleOpenPostAd()}
         onOpenAccount={() => setIsAccountOpen(true)}
+        currentUser={currentUser}
+        onOpenLogin={() => {
+          setAuthModalReason(null);
+          setIsAuthModalOpen(true);
+        }}
+        onOpenAdmin={() => {
+          setCurrentView('admin');
+          window.location.hash = '#/admin';
+        }}
         viewportMode={viewportMode}
         onToggleViewport={() => setViewportMode((prev) => (prev === 'mobile' ? 'desktop' : 'mobile'))}
         lang={lang}
@@ -210,21 +400,19 @@ export default function App() {
             {/* Quick Action buttons */}
             <div className="flex items-center gap-2.5 shrink-0">
               <button
-                onClick={() => setIsPostAdOpen(true)}
+                onClick={() => handleOpenPostAd()}
                 className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 font-black rounded-xl text-sm shadow-md transition-all active:scale-95"
               >
                 <PlusCircle size={18} />
                 <span>{isAr ? 'أضف إعلانك الآن مجاناً' : 'Post Free Ad'}</span>
               </button>
-
-
             </div>
           </div>
         </div>
 
         {/* Layout Grid: Left Sidebar Categories (or top on mobile) & Right Listings Feed */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Categories Sidebar (Mourjan exact menu structure) */}
+          {/* Categories Sidebar */}
           <aside className="lg:col-span-4 space-y-4">
             <CategoryNav
               selectedCategoryId={selectedCategoryId}
@@ -282,12 +470,11 @@ export default function App() {
                 category={activeCategory}
                 subCategory={activeSubCategory}
                 listings={listings}
+                currentUser={currentUser}
                 onBack={() => setSelectedSubCategoryId(undefined)}
-                onOpenDetails={(item) => setActiveDetailsListing(item)}
-                onOpenPostAd={(preselectedSection) => {
-                  setPostAdSection(preselectedSection);
-                  setIsPostAdOpen(true);
-                }}
+                onOpenDetails={handleOpenDetails}
+                onRequireLogin={handleRequireLogin}
+                onOpenPostAd={(preselectedSection) => handleOpenPostAd(preselectedSection)}
                 lang={lang}
               />
             ) : (
@@ -352,7 +539,9 @@ export default function App() {
                       <ListingCard
                         key={listing.id}
                         listing={listing}
-                        onOpenDetails={(item) => setActiveDetailsListing(item)}
+                        currentUser={currentUser}
+                        onOpenDetails={handleOpenDetails}
+                        onRequireLogin={handleRequireLogin}
                         onToggleBookmark={handleToggleBookmark}
                         lang={lang}
                       />
@@ -386,7 +575,7 @@ export default function App() {
                         {isAr ? 'عرض كل الإعلانات' : 'Reset Filters'}
                       </button>
                       <button
-                        onClick={() => setIsPostAdOpen(true)}
+                        onClick={() => handleOpenPostAd()}
                         className="px-4 py-2 bg-[#68142c] hover:bg-[#520f23] text-white text-xs font-bold rounded-lg transition-colors"
                       >
                         {isAr ? 'كن أول من ينشر إعلاناً هنا' : 'Post the First Ad Here'}
@@ -400,7 +589,7 @@ export default function App() {
         </div>
       </main>
 
-      {/* Floating Action Button for Help / Quick Navigation (Mourjan orange circular FAB) */}
+      {/* Floating Action Button for Help / Quick Navigation */}
       <div className="fixed bottom-6 left-6 z-20 flex flex-col gap-2">
         <button
           onClick={() => setWarningType('scam_warning')}
@@ -435,7 +624,6 @@ export default function App() {
             <button onClick={() => setWarningType('scam_warning')} className="hover:text-amber-300 transition-colors">
               {isAr ? 'إرشادات الأمان' : 'Safety Guide'}
             </button>
-
           </div>
 
           <div className="text-white/60 text-center sm:text-left">
@@ -483,16 +671,40 @@ export default function App() {
       )}
 
       {/* Global Modals */}
+
+      {/* Authentication Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => {
+          setIsAuthModalOpen(false);
+          setAuthModalReason(null);
+          setPendingActionAfterLogin(null);
+        }}
+        onLoginSuccess={handleLoginSuccess}
+        lang={lang}
+      />
+
+      {/* Listing Details Modal (with contact lock if not logged in) */}
       <ListingDetailsModal
         listing={activeDetailsListing}
+        currentUser={currentUser}
         onClose={() => setActiveDetailsListing(null)}
+        onOpenLogin={() => {
+          setAuthModalReason(isAr ? 'يرجى تسجيل الدخول لعرض رقم الناشر والتواصل معه.' : 'Please log in to view publisher contact.');
+          setIsAuthModalOpen(true);
+        }}
         onOpenChat={(listing) => {
+          if (!currentUser) {
+            handleRequireLogin(listing, 'contact');
+            return;
+          }
           setChatListing(listing);
           setIsChatOpen(true);
         }}
         lang={lang}
       />
 
+      {/* Post Ad Modal */}
       <PostAdModal
         isOpen={isPostAdOpen}
         onClose={() => {
@@ -507,6 +719,7 @@ export default function App() {
         lang={lang}
       />
 
+      {/* Location Selector Modal */}
       <LocationSelectorModal
         isOpen={isRegionModalOpen}
         onClose={() => setIsRegionModalOpen(false)}
@@ -520,12 +733,27 @@ export default function App() {
         lang={lang}
       />
 
+      {/* Account Settings Modal */}
       <AccountSettingsModal
         isOpen={isAccountOpen}
         onClose={() => setIsAccountOpen(false)}
+        currentUser={currentUser}
+        onLogout={handleLogout}
+        onOpenLogin={() => {
+          setIsAccountOpen(false);
+          setAuthModalReason(null);
+          setIsAuthModalOpen(true);
+        }}
+        onUpdateUser={(updated) => {
+          setCurrentUser(updated);
+          try {
+            localStorage.setItem('awn_current_user', JSON.stringify(updated));
+          } catch {}
+        }}
         lang={lang}
       />
 
+      {/* Chat Modal */}
       <ChatModal
         isOpen={isChatOpen}
         onClose={() => setIsChatOpen(false)}
@@ -533,7 +761,7 @@ export default function App() {
         lang={lang}
       />
 
-
+      {/* Safety & Posting Rules Modals */}
       {warningType && (
         <MourjanWarningModals
           isOpen={true}

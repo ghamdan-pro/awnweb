@@ -61,7 +61,8 @@ export const searchListings = async (req: Request, res: Response): Promise<void>
           sellerType: item.seller_type,
           sellerVerified: item.seller_verified,
           sellerRating: item.seller_rating,
-          viewsCount: item.views_count,
+          viewsCount: item.views_count || 0,
+          clicksCount: item.clicks_count || 0,
           createdAt: item.created_at,
           media: item.media || [],
           attributes: [],
@@ -139,6 +140,7 @@ export const getListingById = async (req: Request, res: Response): Promise<void>
     // Check fallback
     const item = FALLBACK_LISTINGS.find((l) => l.id === id);
     if (item) {
+      item.viewsCount = (item.viewsCount || 0) + 1;
       res.status(200).json({ success: true, data: item });
       return;
     }
@@ -274,6 +276,7 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
         sellerVerified: false,
         sellerRating: 5.0,
         viewsCount: 1,
+        clicksCount: 0,
         createdAt: new Date().toISOString(),
         media: (mediaUrls || []).map((url: string, i: number) => ({
           id: 'media-' + i,
@@ -290,6 +293,217 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
       success: true,
       message: 'تم نشر الإعلان بنجاح',
       data: insertedListing,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// 4. Track Listing Click (when user clicks an ad card to view details)
+export const trackListingClick = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    let updatedClicks = 1;
+
+    // 1. Try Supabase
+    try {
+      const { data: rpcData, error: rpcError } = await supabase.rpc('increment_listing_click', {
+        p_listing_id: id,
+      });
+
+      if (!rpcError && rpcData !== null) {
+        updatedClicks = Number(rpcData);
+      } else {
+        const { data: ad } = await supabase
+          .from('listings')
+          .select('clicks_count')
+          .eq('id', id)
+          .single();
+
+        if (ad) {
+          const nextVal = (Number(ad.clicks_count) || 0) + 1;
+          await supabase.from('listings').update({ clicks_count: nextVal }).eq('id', id);
+          updatedClicks = nextVal;
+        }
+      }
+    } catch (e) {}
+
+    // 2. Update local fallback listing
+    const localAd = FALLBACK_LISTINGS.find((l) => l.id === id);
+    if (localAd) {
+      localAd.clicksCount = (localAd.clicksCount || 0) + 1;
+      updatedClicks = localAd.clicksCount;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'تم تسجيل نقرة الاطلاع على تفاصيل الإعلان بنجاح',
+      data: { listingId: id, clicksCount: updatedClicks },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// 5. Track Listing View (when details modal is opened)
+export const trackListingView = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    let updatedViews = 1;
+
+    // 1. Try Supabase
+    try {
+      const { data: rpcData, error: rpcError } = await supabase.rpc('increment_listing_view', {
+        p_listing_id: id,
+      });
+
+      if (!rpcError && rpcData !== null) {
+        updatedViews = Number(rpcData);
+      } else {
+        const { data: ad } = await supabase
+          .from('listings')
+          .select('views_count')
+          .eq('id', id)
+          .single();
+
+        if (ad) {
+          const nextVal = (Number(ad.views_count) || 0) + 1;
+          await supabase.from('listings').update({ views_count: nextVal }).eq('id', id);
+          updatedViews = nextVal;
+        }
+      }
+    } catch (e) {}
+
+    // 2. Update local fallback listing
+    const localAd = FALLBACK_LISTINGS.find((l) => l.id === id);
+    if (localAd) {
+      localAd.viewsCount = (localAd.viewsCount || 0) + 1;
+      updatedViews = localAd.viewsCount;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'تم تسجيل مشاهدة الإعلان بنجاح',
+      data: { listingId: id, viewsCount: updatedViews },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// 6. Update Listing (Edit from Admin Control Panel or Owner)
+export const updateListing = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    let updatedListing: any = null;
+
+    // 1. Try Supabase update
+    try {
+      const dbPayload: any = {};
+      if (updates.title !== undefined) dbPayload.title = updates.title;
+      if (updates.description !== undefined) dbPayload.description = updates.description;
+      if (updates.price !== undefined) dbPayload.price = updates.price !== null ? Number(updates.price) : null;
+      if (updates.currency !== undefined) dbPayload.currency = updates.currency;
+      if (updates.status !== undefined) dbPayload.status = updates.status;
+      if (updates.contactPhone !== undefined) dbPayload.contact_phone = updates.contactPhone;
+      if (updates.whatsappNumber !== undefined) dbPayload.whatsapp_number = updates.whatsappNumber;
+      if (updates.sellerName !== undefined) dbPayload.seller_name = updates.sellerName;
+      if (updates.regionNameAr !== undefined) dbPayload.region_name_ar = updates.regionNameAr;
+      if (updates.cityNameAr !== undefined) dbPayload.city_name_ar = updates.cityNameAr;
+
+      const { data, error } = await supabase
+        .from('listings')
+        .update(dbPayload)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (!error && data) {
+        updatedListing = data;
+      }
+    } catch (e) {}
+
+    // 2. Update local fallback item
+    const index = FALLBACK_LISTINGS.findIndex((l) => l.id === id);
+    if (index !== -1) {
+      FALLBACK_LISTINGS[index] = {
+        ...FALLBACK_LISTINGS[index],
+        ...updates,
+      };
+      if (!updatedListing) {
+        updatedListing = FALLBACK_LISTINGS[index];
+      }
+    }
+
+    if (!updatedListing) {
+      res.status(404).json({ success: false, message: 'الإعلان المطلوب تعديله غير موجود' });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'تم تعديل بيانات الإعلان بنجاح',
+      data: updatedListing,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// 7. Delete Listing (from Admin Control Panel or Owner)
+export const deleteListing = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    // 1. Try Supabase
+    try {
+      await supabase.from('listings').delete().eq('id', id);
+    } catch (e) {}
+
+    // 2. Remove from local fallback
+    const index = FALLBACK_LISTINGS.findIndex((l) => l.id === id);
+    if (index !== -1) {
+      FALLBACK_LISTINGS.splice(index, 1);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'تم حذف الإعلان بنجاح من المنصة',
+      data: { id },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// 8. Update Listing Status (Active, Pending, Rejected, Premium)
+export const updateListingStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!status) {
+      res.status(400).json({ success: false, message: 'الحالة الجديدة مطلوبة' });
+      return;
+    }
+
+    // 1. Try Supabase
+    try {
+      await supabase.from('listings').update({ status }).eq('id', id);
+    } catch (e) {}
+
+    // 2. Update fallback
+    const ad = FALLBACK_LISTINGS.find((l) => l.id === id);
+    if (ad) {
+      ad.status = status;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `تم تحديث حالة الإعلان إلى: ${status}`,
+      data: { id, status },
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });

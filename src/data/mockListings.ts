@@ -75,6 +75,7 @@ export interface Listing {
   sellerAvatar?: string;
   createdAt: string;
   viewsCount: number;
+  clicksCount?: number;
   attributes: ListingAttribute[];
   media: ListingMedia[];
   isBookmarked?: boolean;
@@ -116,6 +117,7 @@ export const INITIAL_LISTINGS: Listing[] = [
     sellerRating: 4.9,
     createdAt: 'منذ ساعتين',
     viewsCount: 382,
+    clicksCount: 145,
     attributes: [
       { key: 'role', labelAr: 'المسمى الوظيفي', valueAr: 'شيف ذبايح ورز مندي وبشاور', labelEn: 'Role', valueEn: 'Banquet & Mandi Chef' },
       { key: 'experience', labelAr: 'سنوات الخبرة', valueAr: '8 سنوات خبرة احترافية', labelEn: 'Experience', valueEn: '8 Years' },
@@ -157,6 +159,7 @@ export const INITIAL_LISTINGS: Listing[] = [
     sellerRating: 4.8,
     createdAt: 'منذ يوم',
     viewsCount: 247,
+    clicksCount: 88,
     attributes: [
       { key: 'role', labelAr: 'المسمى الوظيفي', valueAr: 'معلم بوفية ومطبق وعريكة', labelEn: 'Role', valueEn: 'Snack & Traditional Pastry Cook' },
       { key: 'experience', labelAr: 'سنوات الخبرة', valueAr: '6 سنوات', labelEn: 'Experience', valueEn: '6 Years' },
@@ -198,6 +201,7 @@ export const INITIAL_LISTINGS: Listing[] = [
     sellerRating: 4.95,
     createdAt: 'منذ 4 ساعات',
     viewsCount: 520,
+    clicksCount: 215,
     attributes: [
       { key: 'role', labelAr: 'الوظيفة المطلوبة', valueAr: 'شيف رئيسي مندي ومناسبات', labelEn: 'Required Role', valueEn: 'Head Mandi Chef' },
       { key: 'experienceRequired', labelAr: 'الخبرة المطلوبة', valueAr: '5 سنوات فأكثر', labelEn: 'Experience Required', valueEn: '5+ Years' },
@@ -235,6 +239,7 @@ export const INITIAL_LISTINGS: Listing[] = [
     sellerRating: 4.7,
     createdAt: 'منذ 8 ساعات',
     viewsCount: 310,
+    clicksCount: 122,
     attributes: [
       { key: 'role', labelAr: 'الوظيفة المطلوبة', valueAr: 'معلم باريستا وعصائر', labelEn: 'Required Role', valueEn: 'Barista & Juice Maker' },
       { key: 'experienceRequired', labelAr: 'الخبرة المطلوبة', valueAr: 'سنتان فأكثر', labelEn: 'Experience', valueEn: '2+ Years' },
@@ -446,6 +451,7 @@ export const INITIAL_LISTINGS: Listing[] = [
     sellerRating: 5.0,
     createdAt: 'منذ 3 ساعات',
     viewsCount: 890,
+    clicksCount: 380,
     attributes: [
       { key: 'make', labelAr: 'الشركة المصنعة', valueAr: 'تويوتا (Toyota)', labelEn: 'Make', valueEn: 'Toyota' },
       { key: 'year', labelAr: 'سنة الصنع', valueAr: '2022', labelEn: 'Year', valueEn: '2022' },
@@ -484,6 +490,7 @@ export const INITIAL_LISTINGS: Listing[] = [
     sellerRating: 4.7,
     createdAt: 'منذ 5 ساعات',
     viewsCount: 512,
+    clicksCount: 220,
     attributes: [
       { key: 'rooms', labelAr: 'عدد الغرف', valueAr: '3 غرف نوم + مجلس', labelEn: 'Bedrooms', valueEn: '3 Bed + Majlis' },
       { key: 'bathrooms', labelAr: 'دورات المياه', valueAr: '3 حمامات', labelEn: 'Bathrooms', valueEn: '3 Baths' },
@@ -524,6 +531,7 @@ export const INITIAL_LISTINGS: Listing[] = [
     sellerRating: 5.0,
     createdAt: 'منذ 6 ساعات',
     viewsCount: 165,
+    clicksCount: 75,
     attributes: [
       { key: 'techStack', labelAr: 'التقنيات', valueAr: 'React, Node, PostgreSQL, Python', labelEn: 'Tech Stack', valueEn: 'React, Node' },
       { key: 'workType', labelAr: 'طبيعة العمل', valueAr: 'عن بعد (Remote) أو عقود مشاريع', labelEn: 'Work Type', valueEn: 'Remote' }
