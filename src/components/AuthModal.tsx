@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { X, Lock, Phone, Mail, Shield, UserPlus, LogIn, CheckCircle2, AlertCircle, Sparkles, Building, UserCheck } from 'lucide-react';
+import { X, Lock, Phone, Mail, Shield, UserPlus, LogIn, CheckCircle2, AlertCircle, Sparkles, Building, UserCheck, Briefcase } from 'lucide-react';
 import { AuthUser, DEMO_USERS, AccountType, getAdminPassword } from '../types/auth';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLoginSuccess: (user: AuthUser) => void;
+  onLoginSuccess: (user: AuthUser, isNewRegistration?: boolean) => void;
   defaultAdmin?: boolean;
   lang: 'ar' | 'en';
 }
@@ -80,11 +80,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           role: 'user',
           accountType,
           accountId: String(Math.floor(10000000 + Math.random() * 90000000)),
-          isVerified: false,
+          isVerified: true,
           walletBalanceYer: 5000,
           walletBalanceUsd: 10,
         };
-        onLoginSuccess(newUser);
+        onLoginSuccess(newUser, true);
         onClose();
       }
     }, 400);
@@ -165,51 +165,97 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
-                  {isAr ? 'نوع الحساب' : 'Account Type'}
+                <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                  {isAr ? 'اختر نوع الحساب في عون يمن' : 'Select Account Type'}
                 </label>
-                <div className="grid grid-cols-2 gap-2 text-xs font-bold">
-                  {(['individual', 'company', 'agency', 'advertiser'] as AccountType[]).map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setAccountType(t)}
-                      className={`p-2 rounded-lg border text-center transition-all ${
-                        accountType === t
-                          ? 'bg-[#68142c] text-white border-[#68142c]'
-                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      {t === 'individual' && (isAr ? 'حساب شخصي' : 'Personal')}
-                      {t === 'company' && (isAr ? 'شركة / منشأة' : 'Company')}
-                      {t === 'agency' && (isAr ? 'وكالة توظيف' : 'Agency')}
-                      {t === 'advertiser' && (isAr ? 'معلن تجاري' : 'Advertiser')}
-                    </button>
-                  ))}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setAccountType('individual')}
+                    className={`p-3 rounded-xl border text-right transition-all flex flex-col justify-between relative overflow-hidden ${
+                      accountType === 'individual'
+                        ? 'bg-[#68142c] text-white border-[#68142c] shadow-md ring-2 ring-[#68142c]/30'
+                        : 'bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <div className={`p-1.5 rounded-lg ${accountType === 'individual' ? 'bg-white/20 text-white' : 'bg-amber-100 text-[#68142c]'}`}>
+                        <Briefcase size={16} />
+                      </div>
+                      {accountType === 'individual' && <CheckCircle2 size={16} className="text-amber-400" />}
+                    </div>
+                    <div>
+                      <div className="font-black text-xs">
+                        {isAr ? 'مهني / عامل / باحث' : 'Professional / Worker'}
+                      </div>
+                      <div className={`text-[10px] mt-0.5 leading-tight ${accountType === 'individual' ? 'text-slate-200' : 'text-slate-500'}`}>
+                        {isAr ? 'حرفيين، مهندسين، كوادر وفنيين' : 'Talents, Job Seekers'}
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setAccountType('company')}
+                    className={`p-3 rounded-xl border text-right transition-all flex flex-col justify-between relative overflow-hidden ${
+                      accountType === 'company'
+                        ? 'bg-[#68142c] text-white border-[#68142c] shadow-md ring-2 ring-[#68142c]/30'
+                        : 'bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <div className={`p-1.5 rounded-lg ${accountType === 'company' ? 'bg-white/20 text-white' : 'bg-amber-100 text-[#68142c]'}`}>
+                        <Building size={16} />
+                      </div>
+                      {accountType === 'company' && <CheckCircle2 size={16} className="text-amber-400" />}
+                    </div>
+                    <div>
+                      <div className="font-black text-xs">
+                        {isAr ? 'مالك عمل / شركة' : 'Business Owner / Company'}
+                      </div>
+                      <div className={`text-[10px] mt-0.5 leading-tight ${accountType === 'company' ? 'text-slate-200' : 'text-slate-500'}`}>
+                        {isAr ? 'أصحاب العمل، منشآت ومحلات' : 'Employers, Establishments'}
+                      </div>
+                    </div>
+                  </button>
                 </div>
               </div>
             </>
           )}
 
-          {/* Identifier Input */}
+          {/* Identifier Input (Mobile Phone or Admin ID) */}
           <div>
             <label className="text-xs font-bold text-slate-700 block mb-1">
               {isAdminMode
-                ? (isAr ? 'اسم مستخدم الإدارة أو البريد' : 'Admin Username or Email')
-                : (isAr ? 'رقم الهاتف (+967) أو البريد' : 'Phone (+967) or Email')}
+                ? (isAr ? 'اسم مستخدم الإدارة أو البريد الإلكتروني' : 'Admin Username or Email')
+                : (isAr ? 'رقم الهاتف المحمول (اليمن)' : 'Yemen Mobile Phone')}
             </label>
-            <div className="relative">
+            <div className="relative flex items-center">
+              {!isAdminMode && (
+                <div className="absolute right-2.5 flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-200/80 px-2 py-1 rounded-md pointer-events-none z-10">
+                  <span className="text-sm">🇾🇪</span>
+                  <span dir="ltr">+967</span>
+                </div>
+              )}
               <input
-                type="text"
+                type={isAdminMode ? 'text' : 'tel'}
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                placeholder={isAdminMode ? 'admin@awnyemen.com' : '777 123 456'}
-                className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 pl-9 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#68142c]"
+                placeholder={isAdminMode ? 'admin@awnyemen.com' : '77X XXX XXX'}
+                dir={isAdminMode ? 'ltr' : 'ltr'}
+                className={`w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-sm font-bold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#68142c] ${
+                  isAdminMode ? 'pl-9 pr-3' : 'pr-24 pl-9 text-right'
+                }`}
               />
-              <div className="absolute top-2.5 left-3 text-slate-400">
+              <div className="absolute left-3 text-slate-400 pointer-events-none">
                 {isAdminMode ? <Shield size={16} /> : <Phone size={16} />}
               </div>
             </div>
+            {!isAdminMode && (
+              <p className="text-[10px] text-slate-500 mt-1">
+                {isAr ? 'يمن موبايل (77)، يو (73)، سبأفون (71)، أو واي (70)' : 'Accepts all Yemen operators (77, 73, 71, 70)'}
+              </p>
+            )}
           </div>
 
           {/* Password Input */}
