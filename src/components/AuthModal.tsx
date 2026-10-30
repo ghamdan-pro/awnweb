@@ -107,8 +107,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               {isAdminMode
                 ? (isAr ? 'تسجيل دخول لوحة تحكم الإدارة' : 'Admin Control Panel Login')
                 : mode === 'login'
-                ? (isAr ? 'تسجيل الدخول إلى عون يمن' : 'Login to Awn Yemen')
-                : (isAr ? 'إنشاء حساب جديد في عون يمن' : 'Register New Account')}
+                  ? (isAr ? 'تسجيل الدخول إلى عون يمن' : 'Login to Awn Yemen')
+                  : (isAr ? 'إنشاء حساب جديد في عون يمن' : 'Register New Account')}
             </h3>
           </div>
           <button
@@ -172,11 +172,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setAccountType('individual')}
-                    className={`p-3 rounded-xl border text-right transition-all flex flex-col justify-between relative overflow-hidden ${
-                      accountType === 'individual'
+                    className={`p-3 rounded-xl border text-right transition-all flex flex-col justify-between relative overflow-hidden ${accountType === 'individual'
                         ? 'bg-[#68142c] text-white border-[#68142c] shadow-md ring-2 ring-[#68142c]/30'
                         : 'bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between mb-1">
                       <div className={`p-1.5 rounded-lg ${accountType === 'individual' ? 'bg-white/20 text-white' : 'bg-amber-100 text-[#68142c]'}`}>
@@ -197,11 +196,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setAccountType('company')}
-                    className={`p-3 rounded-xl border text-right transition-all flex flex-col justify-between relative overflow-hidden ${
-                      accountType === 'company'
+                    className={`p-3 rounded-xl border text-right transition-all flex flex-col justify-between relative overflow-hidden ${accountType === 'company'
                         ? 'bg-[#68142c] text-white border-[#68142c] shadow-md ring-2 ring-[#68142c]/30'
                         : 'bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between mb-1">
                       <div className={`p-1.5 rounded-lg ${accountType === 'company' ? 'bg-white/20 text-white' : 'bg-amber-100 text-[#68142c]'}`}>
@@ -243,9 +241,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 onChange={(e) => setIdentifier(e.target.value)}
                 placeholder={isAdminMode ? 'admin@awnyemen.com' : '77X XXX XXX'}
                 dir={isAdminMode ? 'ltr' : 'ltr'}
-                className={`w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-sm font-bold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#68142c] ${
-                  isAdminMode ? 'pl-9 pr-3' : 'pr-24 pl-9 text-right'
-                }`}
+                className={`w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-sm font-bold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#68142c] ${isAdminMode ? 'pl-9 pr-3' : 'pr-24 pl-9 text-right'
+                  }`}
               />
               <div className="absolute left-3 text-slate-400 pointer-events-none">
                 {isAdminMode ? <Shield size={16} /> : <Phone size={16} />}
@@ -278,24 +275,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
 
           {/* Toggle admin switch */}
-          <div className="flex items-center justify-between pt-1">
-            <button
-              type="button"
-              onClick={() => { setIsAdminMode(!isAdminMode); setError(null); }}
-              className="text-xs font-bold text-amber-900 hover:text-[#68142c] flex items-center gap-1"
-            >
-              <Shield size={13} />
-              <span>{isAdminMode ? (isAr ? 'العودة لتسجيل دخول المستخدمين' : 'Back to User Login') : (isAr ? 'تسجيل دخول كمسؤول نظام (Admin)' : 'Admin Login')}</span>
-            </button>
-          </div>
+
 
           {/* Submit Button */}
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-2.5 px-4 rounded-xl text-white font-bold text-sm shadow-md transition-all active:scale-98 flex items-center justify-center gap-2 ${
-              isAdminMode ? 'bg-slate-900 hover:bg-slate-800' : 'bg-[#68142c] hover:bg-[#520f23]'
-            }`}
+            className={`w-full py-2.5 px-4 rounded-xl text-white font-bold text-sm shadow-md transition-all active:scale-98 flex items-center justify-center gap-2 ${isAdminMode ? 'bg-slate-900 hover:bg-slate-800' : 'bg-[#68142c] hover:bg-[#520f23]'
+              }`}
           >
             {loading ? (
               <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
@@ -306,8 +293,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   {isAdminMode
                     ? (isAr ? 'دخول لوحة التحكم' : 'Enter Control Panel')
                     : mode === 'login'
-                    ? (isAr ? 'تسجيل الدخول' : 'Sign In')
-                    : (isAr ? 'تأكيد التسجيل' : 'Create Account')}
+                      ? (isAr ? 'تسجيل الدخول' : 'Sign In')
+                      : (isAr ? 'تأكيد التسجيل' : 'Create Account')}
                 </span>
               </>
             )}

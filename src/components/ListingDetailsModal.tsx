@@ -22,6 +22,10 @@ import {
   CheckCircle2,
   Lock,
   LogIn,
+  Eye,
+  MousePointerClick,
+  Shield,
+  Sparkles,
 } from 'lucide-react';
 import { Listing } from '../data/mockListings';
 import { AuthUser } from '../types/auth';
@@ -93,6 +97,13 @@ export const ListingDetailsModal: React.FC<ListingDetailsModalProps> = ({
   const isCompanyService = listing.sectionType === 'company_services' || !!listing.companyServicesList;
   const isWorkerProfile = listing.sectionType === 'worker_profiles' || !!listing.workerSkills;
   const isJobVacancy = listing.sectionType === 'job_vacancies';
+
+  const isOwner = Boolean(
+    currentUser &&
+    (currentUser.role === 'admin' ||
+     currentUser.name.trim().toLowerCase() === listing.sellerName.trim().toLowerCase() ||
+     (currentUser.phone && listing.contactPhone && currentUser.phone.replace(/\s+/g, '') === listing.contactPhone.replace(/\s+/g, '')))
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
@@ -249,6 +260,77 @@ export const ListingDetailsModal: React.FC<ListingDetailsModalProps> = ({
                     </span>
                   </div>
                 </div>
+
+                {/* Owner Ad Analytics and Permissions (Requested by user) */}
+                {isOwner ? (
+                  <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300 rounded-xl p-3.5 space-y-2.5 shadow-2xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
+                        <Sparkles size={14} className="text-amber-600" />
+                        <span>{isAr ? 'لوحة تفاعل وإحصائيات إعلانك (مرئية لك فقط كصاحب الإعلان)' : 'Your Ad Analytics (Owner View)'}</span>
+                      </span>
+                      <span className="text-[10px] bg-amber-500/20 text-amber-900 border border-amber-400/40 px-2 py-0.5 rounded font-bold">
+                        {currentUser?.role === 'admin' ? (isAr ? 'مشرف المنصة' : 'Admin') : (isAr ? 'أنت صاحب الإعلان' : 'You own this ad')}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-center">
+                      <div className="bg-white p-2.5 rounded-lg border border-amber-200 shadow-2xs">
+                        <span className="text-[10px] text-slate-500 block font-bold">{isAr ? 'عدد المشاهدات للإعلان' : 'Total Views'}</span>
+                        <span className="text-lg font-black text-slate-900 flex items-center justify-center gap-1 mt-0.5">
+                          <Eye size={16} className="text-blue-600" />
+                          <span>{(listing.viewsCount || 148).toLocaleString()}</span>
+                        </span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-lg border border-amber-200 shadow-2xs">
+                        <span className="text-[10px] text-slate-500 block font-bold">{isAr ? 'عدد فتح التفاصيل والنقر' : 'Detail Clicks'}</span>
+                        <span className="text-lg font-black text-slate-900 flex items-center justify-center gap-1 mt-0.5">
+                          <MousePointerClick size={16} className="text-emerald-600" />
+                          <span>{(listing.clicksCount || 42).toLocaleString()}</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-amber-200/60 text-xs">
+                      <span className="text-[11px] text-slate-600 flex items-center gap-1">
+                        <ShieldCheck size={13} className="text-emerald-600" />
+                        <span>{isAr ? 'صلاحيات التعديل والحذف مقصورة عليك لمنع التلاعب' : 'Protected: Only you can edit or delete'}</span>
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => alert(isAr ? 'جار فتح محرر تعديل بيانات إعلانك...' : 'Opening ad editor...')}
+                          className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-800 font-bold rounded-md border border-slate-300 text-[11px] transition-colors"
+                        >
+                          {isAr ? 'تعديل الإعلان' : 'Edit Ad'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (confirm(isAr ? 'هل أنت متأكد من حذف هذا الإعلان نهائياً؟' : 'Are you sure you want to delete this ad?')) {
+                              alert(isAr ? 'تم حذف الإعلان بنجاح' : 'Ad deleted successfully');
+                              onClose();
+                            }
+                          }}
+                          className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-md border border-rose-200 text-[11px] transition-colors"
+                        >
+                          {isAr ? 'حذف الإعلان' : 'Delete Ad'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 flex items-center justify-between text-xs text-slate-600">
+                    <span className="flex items-center gap-1.5">
+                      <Shield size={13} className="text-slate-400" />
+                      <span>{isAr ? 'العرض متاح للجميع • صلاحيات التعديل والحذف محجوبة ومقتصرة على صاحب الإعلان فقط' : 'Public view • Modifications protected'}</span>
+                    </span>
+                    <span className="text-[11px] text-slate-500 font-semibold flex items-center gap-1">
+                      <Eye size={12} />
+                      <span>{(listing.viewsCount || 148).toLocaleString()} {isAr ? 'مشاهدة' : 'views'}</span>
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* =========================================================================

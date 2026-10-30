@@ -39,7 +39,12 @@ import {
   Wrench,
   Building2,
   Car,
-  Package
+  Package,
+  ArrowUp,
+  ArrowDown,
+  Snowflake,
+  Pause,
+  Play
 } from 'lucide-react';
 import { Listing } from '../data/mockListings';
 import { CATEGORIES, Category, SubCategory } from '../data/categoriesData';
@@ -81,7 +86,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   const [categoriesList, setCategoriesList] = useState<Category[]>(() => {
     const saved = localStorage.getItem('awn_custom_categories');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
+      try { return JSON.parse(saved); } catch (e) { }
     }
     return CATEGORIES;
   });
@@ -131,7 +136,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     setCategoriesList(updated);
     try {
       localStorage.setItem('awn_custom_categories', JSON.stringify(updated));
-    } catch (e) {}
+    } catch (e) { }
   };
 
   // Load live analytics stats
@@ -176,7 +181,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     onUpdateListing(updated);
     try {
       await apiService.updateListing(listing.id, { status: newStatus as any });
-    } catch (e) {}
+    } catch (e) { }
   };
 
   // Quick toggle active/pending listing
@@ -186,7 +191,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     onUpdateListing(updated);
     try {
       await apiService.updateListing(listing.id, { status: newStatus as any });
-    } catch (e) {}
+    } catch (e) { }
   };
 
   // Handle save edits for listings
@@ -278,6 +283,67 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     setNewSubNameAr('');
     setNewSubNameEn('');
     setNewSubSlug('');
+  };
+
+  // Toggle freeze / active for a parent category
+  const handleToggleFreezeCategory = (catId: string) => {
+    const updated = categoriesList.map((c) => {
+      if (c.id === catId) {
+        const nextActive = c.is_active === false ? true : false;
+        return { ...c, is_active: nextActive };
+      }
+      return c;
+    });
+    saveCategories(updated);
+  };
+
+  // Re-order parent category (move up or down)
+  const handleMoveCategoryOrder = (catId: string, direction: 'up' | 'down') => {
+    const index = categoriesList.findIndex((c) => c.id === catId);
+    if (index === -1) return;
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= categoriesList.length) return;
+    const listCopy = [...categoriesList];
+    const temp = listCopy[index];
+    listCopy[index] = listCopy[targetIndex];
+    listCopy[targetIndex] = temp;
+    saveCategories(listCopy);
+  };
+
+  // Toggle freeze / active for a subcategory
+  const handleToggleFreezeSubCategory = (parentId: string, subId: string) => {
+    const updated = categoriesList.map((c) => {
+      if (c.id === parentId) {
+        const updatedSubs = c.subcategories.map((s) => {
+          if (s.id === subId) {
+            return { ...s, is_active: s.is_active === false ? true : false };
+          }
+          return s;
+        });
+        return { ...c, subcategories: updatedSubs };
+      }
+      return c;
+    });
+    saveCategories(updated);
+  };
+
+  // Re-order subcategory within parent
+  const handleMoveSubCategoryOrder = (parentId: string, subId: string, direction: 'up' | 'down') => {
+    const updated = categoriesList.map((c) => {
+      if (c.id === parentId) {
+        const subIndex = c.subcategories.findIndex((s) => s.id === subId);
+        if (subIndex === -1) return c;
+        const targetIndex = direction === 'up' ? subIndex - 1 : subIndex + 1;
+        if (targetIndex < 0 || targetIndex >= c.subcategories.length) return c;
+        const subsCopy = [...c.subcategories];
+        const temp = subsCopy[subIndex];
+        subsCopy[subIndex] = subsCopy[targetIndex];
+        subsCopy[targetIndex] = temp;
+        return { ...c, subcategories: subsCopy };
+      }
+      return c;
+    });
+    saveCategories(updated);
   };
 
   // Handle change admin password
@@ -381,7 +447,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 required
                 value={adminUsername}
                 onChange={(e) => setAdminUsername(e.target.value)}
-                placeholder="admin@awnyemen.com"
+                placeholder="a@example.com"
                 className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:ring-2 focus:ring-amber-400 text-sm"
               />
             </div>
@@ -408,11 +474,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
 
           <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-xl text-center text-slate-400 text-[11px] leading-relaxed">
             <Lock size={13} className="inline-block mb-0.5 text-amber-400 ml-1" />
-            <span>
-              {isAr
-                ? 'تم إلغاء زر الدخول التجريبي التلقائي (Demo) لأن المنصة مرفوعة ومحمية لحساب الإدارة.'
-                : '1-Click demo bypass is disabled because the platform is running live in production.'}
-            </span>
+
           </div>
 
           <div className="text-center pt-2">
@@ -480,11 +542,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center gap-2 overflow-x-auto text-xs font-bold border-t border-slate-800/80">
           <button
             onClick={() => setActiveTab('kpi')}
-            className={`py-3 px-3 flex items-center gap-2 border-b-2 transition-all shrink-0 ${
-              activeTab === 'kpi'
-                ? 'border-amber-400 text-amber-400 font-black'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
+            className={`py-3 px-3 flex items-center gap-2 border-b-2 transition-all shrink-0 ${activeTab === 'kpi'
+              ? 'border-amber-400 text-amber-400 font-black'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+              }`}
           >
             <TrendingUp size={16} />
             <span>{isAr ? 'المؤشرات والزوار (KPIs)' : 'Overview & KPIs'}</span>
@@ -492,11 +553,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
 
           <button
             onClick={() => setActiveTab('listings')}
-            className={`py-3 px-3 flex items-center gap-2 border-b-2 transition-all shrink-0 ${
-              activeTab === 'listings'
-                ? 'border-amber-400 text-amber-400 font-black'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
+            className={`py-3 px-3 flex items-center gap-2 border-b-2 transition-all shrink-0 ${activeTab === 'listings'
+              ? 'border-amber-400 text-amber-400 font-black'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+              }`}
           >
             <Layers size={16} />
             <span>{isAr ? `إدارة وتعديل الإعلانات (${listings.length})` : `Listings (${listings.length})`}</span>
@@ -504,11 +564,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
 
           <button
             onClick={() => setActiveTab('categories')}
-            className={`py-3 px-3 flex items-center gap-2 border-b-2 transition-all shrink-0 ${
-              activeTab === 'categories'
-                ? 'border-amber-400 text-amber-400 font-black'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
+            className={`py-3 px-3 flex items-center gap-2 border-b-2 transition-all shrink-0 ${activeTab === 'categories'
+              ? 'border-amber-400 text-amber-400 font-black'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+              }`}
           >
             <FolderTree size={16} />
             <span>{isAr ? `الأقسام والقوائم (${categoriesList.length} رئيسي • 87 فرعي)` : `Categories (${categoriesList.length})`}</span>
@@ -516,11 +575,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
 
           <button
             onClick={() => setActiveTab('users')}
-            className={`py-3 px-3 flex items-center gap-2 border-b-2 transition-all shrink-0 ${
-              activeTab === 'users'
-                ? 'border-amber-400 text-amber-400 font-black'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
+            className={`py-3 px-3 flex items-center gap-2 border-b-2 transition-all shrink-0 ${activeTab === 'users'
+              ? 'border-amber-400 text-amber-400 font-black'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+              }`}
           >
             <Users size={16} />
             <span>{isAr ? 'المستخدمين والأمان' : 'Users & Security'}</span>
@@ -528,11 +586,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
 
           <button
             onClick={() => setActiveTab('system')}
-            className={`py-3 px-3 flex items-center gap-2 border-b-2 transition-all shrink-0 ${
-              activeTab === 'system'
-                ? 'border-amber-400 text-amber-400 font-black'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
+            className={`py-3 px-3 flex items-center gap-2 border-b-2 transition-all shrink-0 ${activeTab === 'system'
+              ? 'border-amber-400 text-amber-400 font-black'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+              }`}
           >
             <Settings2 size={16} />
             <span>{isAr ? 'إعدادات النظام والواجهات' : 'System & Endpoints'}</span>
@@ -701,11 +758,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                   <button
                     key={st}
                     onClick={() => setStatusFilter(st)}
-                    className={`px-3 py-1.5 rounded-lg transition-colors shrink-0 ${
-                      statusFilter === st
-                        ? 'bg-amber-500 text-slate-950 font-black'
-                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                    }`}
+                    className={`px-3 py-1.5 rounded-lg transition-colors shrink-0 ${statusFilter === st
+                      ? 'bg-amber-500 text-slate-950 font-black'
+                      : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                      }`}
                   >
                     {st === 'all' && (isAr ? 'الكل' : 'All')}
                     {st === 'active' && (isAr ? 'نشط' : 'Active')}
@@ -805,15 +861,14 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                           <button
                             onClick={() => handleToggleActive(l)}
                             title={isAr ? 'اضغط لتبديل حالة الإعلان بين نشط ومعلق' : 'Click to toggle active/pending'}
-                            className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-transform active:scale-95 ${
-                              l.status === 'premium'
-                                ? 'bg-amber-400/20 text-amber-300 border border-amber-400/30'
-                                : l.status === 'active'
+                            className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-transform active:scale-95 ${l.status === 'premium'
+                              ? 'bg-amber-400/20 text-amber-300 border border-amber-400/30'
+                              : l.status === 'active'
                                 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                                 : l.status === 'pending'
-                                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                                : 'bg-slate-700 text-slate-300'
-                            }`}
+                                  ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                                  : 'bg-slate-700 text-slate-300'
+                              }`}
                           >
                             {l.status === 'premium' && (isAr ? 'مميز ★' : 'Featured')}
                             {l.status === 'active' && (isAr ? 'نشط' : 'Active')}
@@ -828,9 +883,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                             {/* Toggle Featured */}
                             <button
                               onClick={() => handleToggleFeatured(l)}
-                              className={`p-1.5 rounded-lg transition-colors ${
-                                l.status === 'premium' ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-slate-400 hover:text-amber-300'
-                              }`}
+                              className={`p-1.5 rounded-lg transition-colors ${l.status === 'premium' ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-slate-400 hover:text-amber-300'
+                                }`}
                               title={isAr ? 'تمييز الإعلان ★' : 'Feature Listing'}
                             >
                               <Star size={14} className={l.status === 'premium' ? 'fill-current' : ''} />
@@ -924,11 +978,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
             <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs font-bold">
               <button
                 onClick={() => setSelectedParentCatId('all')}
-                className={`px-3 py-1.5 rounded-lg transition-colors shrink-0 ${
-                  selectedParentCatId === 'all'
-                    ? 'bg-amber-500 text-slate-950 font-black'
-                    : 'bg-slate-900 text-slate-300 hover:bg-slate-800'
-                }`}
+                className={`px-3 py-1.5 rounded-lg transition-colors shrink-0 ${selectedParentCatId === 'all'
+                  ? 'bg-amber-500 text-slate-950 font-black'
+                  : 'bg-slate-900 text-slate-300 hover:bg-slate-800'
+                  }`}
               >
                 {isAr ? 'جميع الأقسام الرئيسية (5)' : 'All Parents (5)'}
               </button>
@@ -936,11 +989,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 <button
                   key={c.id}
                   onClick={() => setSelectedParentCatId(c.id)}
-                  className={`px-3 py-1.5 rounded-lg transition-colors shrink-0 flex items-center gap-1.5 ${
-                    selectedParentCatId === c.id
-                      ? 'bg-amber-500 text-slate-950 font-black'
-                      : 'bg-slate-900 text-slate-300 hover:bg-slate-800'
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg transition-colors shrink-0 flex items-center gap-1.5 ${selectedParentCatId === c.id
+                    ? 'bg-amber-500 text-slate-950 font-black'
+                    : 'bg-slate-900 text-slate-300 hover:bg-slate-800'
+                    }`}
                 >
                   <span>{c.nameAr}</span>
                   <span className="text-[10px] opacity-75 font-mono">({c.subcategories.length})</span>
@@ -958,15 +1010,26 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                     <div className="bg-slate-950 p-4 border-b border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <div
-                          className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white shadow-sm"
+                          className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white shadow-sm shrink-0"
                           style={{ backgroundColor: cat.color }}
                         >
                           <Tag size={18} />
                         </div>
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <h4 className="font-black text-white text-sm sm:text-base">{cat.nameAr}</h4>
                             <span className="text-xs text-slate-400 font-semibold font-sans">({cat.nameEn})</span>
+                            {cat.is_active === false ? (
+                              <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[10px] font-black flex items-center gap-1">
+                                <Snowflake size={11} className="animate-spin" />
+                                <span>{isAr ? 'مجمد / موقوف مؤقتاً' : 'Frozen / Suspended'}</span>
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-black flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                <span>{isAr ? 'نشط ومعروض' : 'Active'}</span>
+                              </span>
+                            )}
                           </div>
                           <span className="text-[11px] text-slate-400">
                             {cat.subcategories.length} {isAr ? 'أقسام فرعية' : 'subcategories'} • {catAdsCount} {isAr ? 'إعلانات مرتبطة' : 'linked ads'} • Slug: <code className="text-amber-300">{cat.slug}</code>
@@ -974,14 +1037,48 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {/* Order Re-ordering (Move Up / Move Down) */}
+                        <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5">
+                          <button
+                            type="button"
+                            onClick={() => handleMoveCategoryOrder(cat.id, 'up')}
+                            className="p-1 hover:bg-slate-800 text-slate-300 hover:text-amber-400 rounded transition-colors"
+                            title={isAr ? 'تحريك القسم للأعلى' : 'Move Up'}
+                          >
+                            <ArrowUp size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleMoveCategoryOrder(cat.id, 'down')}
+                            className="p-1 hover:bg-slate-800 text-slate-300 hover:text-amber-400 rounded transition-colors"
+                            title={isAr ? 'تحريك القسم للأسفل' : 'Move Down'}
+                          >
+                            <ArrowDown size={14} />
+                          </button>
+                        </div>
+
+                        {/* Freeze / Unfreeze Category Toggle */}
+                        <button
+                          type="button"
+                          onClick={() => handleToggleFreezeCategory(cat.id)}
+                          className={`px-2.5 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1 border ${cat.is_active === false
+                            ? 'bg-rose-950/60 hover:bg-rose-900 border-rose-700/80 text-rose-200'
+                            : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-300 hover:text-white'
+                            }`}
+                          title={cat.is_active === false ? (isAr ? 'إلغاء تجميد وتفعيل القسم' : 'Unfreeze') : (isAr ? 'تجميد وتوقيف القسم' : 'Freeze')}
+                        >
+                          <Snowflake size={13} className={cat.is_active === false ? 'text-cyan-300' : 'text-slate-400'} />
+                          <span>{cat.is_active === false ? (isAr ? 'إلغاء التجميد' : 'Unfreeze') : (isAr ? 'تجميد القسم' : 'Freeze')}</span>
+                        </button>
+
                         {/* Edit Parent Category */}
                         <button
                           onClick={() => setEditingCategory(cat)}
-                          className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5"
+                          className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg transition-colors flex items-center gap-1 border border-slate-700"
                         >
                           <Edit size={13} />
-                          <span>{isAr ? 'تعديل القسم الرئيسي' : 'Edit Parent'}</span>
+                          <span>{isAr ? 'تعديل' : 'Edit'}</span>
                         </button>
 
                         {/* Add New Subcategory to this Parent */}
@@ -992,10 +1089,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                             setNewSubNameEn('');
                             setNewSubSlug('');
                           }}
-                          className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black rounded-lg transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
+                          className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black rounded-lg transition-all flex items-center gap-1 shadow-sm active:scale-95"
                         >
                           <Plus size={14} />
-                          <span>{isAr ? 'إضافة قسم فرعي' : 'Add Subcategory'}</span>
+                          <span>{isAr ? 'إضافة فرعي' : 'Add Sub'}</span>
                         </button>
                       </div>
                     </div>
@@ -1005,21 +1102,45 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                       <table className="w-full text-right text-xs">
                         <thead className="bg-slate-900/60 text-slate-400 font-bold border-b border-slate-800/80">
                           <tr>
+                            <th className="p-3 text-center w-16">{isAr ? 'الترتيب' : 'Order'}</th>
                             <th className="p-3">{isAr ? 'القسم الفرعي' : 'SubCategory'}</th>
                             <th className="p-3">{isAr ? 'الاسم بالإنجليزية' : 'English Name'}</th>
                             <th className="p-3">{isAr ? 'الرمز (Slug)' : 'Slug'}</th>
-                            <th className="p-3 text-center">{isAr ? 'الإعلانات المرتبطة' : 'Linked Ads'}</th>
-                            <th className="p-3">{isAr ? 'الحقول المخصصة' : 'Dynamic Fields'}</th>
+                            <th className="p-3 text-center">{isAr ? 'الإعلانات' : 'Ads'}</th>
+                            <th className="p-3 text-center">{isAr ? 'الحالة' : 'Status'}</th>
                             <th className="p-3 text-center">{isAr ? 'الإجراءات' : 'Actions'}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800/50">
-                          {cat.subcategories.map((sub) => {
+                          {cat.subcategories.map((sub, sIdx) => {
                             const subAdsCount = listings.filter((l) => l.subCategoryId === sub.id).length;
+                            const isFrozen = sub.is_active === false;
                             return (
-                              <tr key={sub.id} className="hover:bg-slate-800/30 transition-colors">
+                              <tr key={sub.id} className={`hover:bg-slate-800/30 transition-colors ${isFrozen ? 'opacity-60 bg-rose-950/10' : ''}`}>
+                                <td className="p-3 text-center">
+                                  <div className="inline-flex items-center gap-0.5 bg-slate-900 border border-slate-800 rounded p-0.5">
+                                    <button
+                                      type="button"
+                                      disabled={sIdx === 0}
+                                      onClick={() => handleMoveSubCategoryOrder(cat.id, sub.id, 'up')}
+                                      className="p-0.5 hover:bg-slate-800 text-slate-400 hover:text-amber-400 disabled:opacity-30 rounded transition-colors"
+                                      title={isAr ? 'تحريك للأعلى' : 'Up'}
+                                    >
+                                      <ArrowUp size={12} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={sIdx === cat.subcategories.length - 1}
+                                      onClick={() => handleMoveSubCategoryOrder(cat.id, sub.id, 'down')}
+                                      className="p-0.5 hover:bg-slate-800 text-slate-400 hover:text-amber-400 disabled:opacity-30 rounded transition-colors"
+                                      title={isAr ? 'تحريك للأسفل' : 'Down'}
+                                    >
+                                      <ArrowDown size={12} />
+                                    </button>
+                                  </div>
+                                </td>
                                 <td className="p-3 font-bold text-white flex items-center gap-2">
-                                  <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                                  <span className={`w-2 h-2 rounded-full ${isFrozen ? 'bg-rose-400' : 'bg-amber-400'}`}></span>
                                   <span>{sub.nameAr}</span>
                                 </td>
                                 <td className="p-3 text-slate-300 font-sans">{sub.nameEn}</td>
@@ -1027,14 +1148,18 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                                 <td className="p-3 text-center font-bold text-emerald-400">
                                   {subAdsCount}
                                 </td>
-                                <td className="p-3 text-slate-400 text-[11px]">
-                                  {sub.fields && sub.fields.length > 0 ? (
-                                    <span className="bg-slate-800 text-slate-300 px-2 py-0.5 rounded text-[10px]">
-                                      {sub.fields.map((f) => f.labelAr).join(', ')}
-                                    </span>
-                                  ) : (
-                                    <span className="text-slate-600">{isAr ? 'حقول قياسية' : 'Standard'}</span>
-                                  )}
+                                <td className="p-3 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleFreezeSubCategory(cat.id, sub.id)}
+                                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-all border ${isFrozen
+                                      ? 'bg-rose-500/20 text-rose-300 border-rose-500/30 hover:bg-rose-500/30'
+                                      : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/30'
+                                      }`}
+                                    title={isFrozen ? (isAr ? 'انقر لتفعيل القسم' : 'Click to unfreeze') : (isAr ? 'انقر لتجميد القسم' : 'Click to freeze')}
+                                  >
+                                    {isFrozen ? (isAr ? '❄️ موقوف' : 'Frozen') : (isAr ? '✓ نشط' : 'Active')}
+                                  </button>
                                 </td>
                                 <td className="p-3 text-center">
                                   <button
@@ -1081,11 +1206,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
 
               {passwordMsg && (
                 <div
-                  className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${
-                    passwordMsg.type === 'success'
-                      ? 'bg-emerald-950/60 border border-emerald-700 text-emerald-300'
-                      : 'bg-rose-950/60 border border-rose-800 text-rose-300'
-                  }`}
+                  className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${passwordMsg.type === 'success'
+                    ? 'bg-emerald-950/60 border border-emerald-700 text-emerald-300'
+                    : 'bg-rose-950/60 border border-rose-800 text-rose-300'
+                    }`}
                 >
                   {passwordMsg.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
                   <span>{passwordMsg.text}</span>
@@ -1299,11 +1423,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                       key={st}
                       type="button"
                       onClick={() => setEditStatus(st)}
-                      className={`p-2 rounded-xl border text-center transition-all ${
-                        editStatus === st
-                          ? 'bg-amber-500 text-slate-950 font-black border-amber-500'
-                          : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
-                      }`}
+                      className={`p-2 rounded-xl border text-center transition-all ${editStatus === st
+                        ? 'bg-amber-500 text-slate-950 font-black border-amber-500'
+                        : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+                        }`}
                     >
                       {st === 'active' && (isAr ? 'نشط' : 'Active')}
                       {st === 'premium' && (isAr ? 'مميز ★' : 'Featured')}

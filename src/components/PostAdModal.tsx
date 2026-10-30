@@ -73,7 +73,8 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
     '/assets/aistudio/WhatsApp_Image_2026-10-26_at_10.38.17_PM_f6350e73.jpeg',
   ]);
 
-  // Validation errors
+  // Validation errors & Phone consent
+  const [phoneConsent, setPhoneConsent] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
 
@@ -112,6 +113,11 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
     if (!description.trim()) errs.description = isAr ? 'يرجى كتابة وصف تفصيلي للإعلان' : 'Description is required';
     if (!phone.trim() || phone.trim().length < 8) {
       errs.phone = isAr ? 'يرجى كتابة رقم الهاتف للتواصل' : 'Valid phone is required';
+    }
+    if (!phoneConsent) {
+      errs.phoneConsent = isAr
+        ? 'يجب الموافقة على مشاركة رقم هاتفك مع هذا الإعلان للتواصل قبل النشر'
+        : 'Consent to share phone number with listing is required';
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -624,6 +630,50 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Mandatory Phone Sharing Consent (Requested by user) */}
+          <div
+            className={`p-4 rounded-xl border transition-all ${
+              errors.phoneConsent
+                ? 'bg-rose-50 border-rose-300 ring-2 ring-rose-300'
+                : 'bg-amber-50/80 border-amber-200 shadow-2xs'
+            }`}
+          >
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={phoneConsent}
+                onChange={(e) => {
+                  setPhoneConsent(e.target.checked);
+                  if (errors.phoneConsent) {
+                    setErrors((prev) => {
+                      const next = { ...prev };
+                      delete next.phoneConsent;
+                      return next;
+                    });
+                  }
+                }}
+                className="mt-1 w-4 h-4 rounded text-[#68142c] focus:ring-[#68142c] shrink-0"
+              />
+              <div className="space-y-1 text-xs">
+                <span className="font-bold text-slate-900 block leading-snug">
+                  {isAr
+                    ? 'أوافق وأصرّح بمشاركة رقم هاتفي مع هذا الإعلان لتمكين المهتمين من التواصل معي هاتفياً أو عبر واتساب *'
+                    : 'I consent to sharing my phone number with this listing for direct calls & WhatsApp *'}
+                </span>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  {isAr
+                    ? '🔒 تنبيه خصوصية وأمان: رقم هاتفك سيكون محمياً ومحجوباً عن الزوار والبرمجيات الخبيثة، ولن يظهر إلا للمستخدمين المسجلين في منصة عون يمن لحمايتك من الاتصالات العشوائية.'
+                    : '🔒 Privacy Notice: Your phone number is shielded from guests and bots, visible only to signed-in members.'}
+                </p>
+                {errors.phoneConsent && (
+                  <p className="text-rose-600 font-bold text-xs mt-1.5 flex items-center gap-1">
+                    <span>⚠ {errors.phoneConsent}</span>
+                  </p>
+                )}
+              </div>
+            </label>
           </div>
         </div>
 

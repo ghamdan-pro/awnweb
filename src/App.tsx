@@ -16,6 +16,7 @@ import { AdminDashboardPage } from './components/AdminDashboardPage';
 import { MourjanWarningModals } from './components/MourjanWarningModals';
 import { ChatModal } from './components/ChatModal';
 import { SubcategoryDetailView } from './components/SubcategoryDetailView';
+import { OnboardingGuideModal } from './components/OnboardingGuideModal';
 import { AuthUser, DEMO_USERS } from './types/auth';
 
 import { CATEGORIES, Category, SubCategory } from './data/categoriesData';
@@ -126,22 +127,53 @@ export default function App() {
   const [isRegionModalOpen, setIsRegionModalOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isOnboardingGuideOpen, setIsOnboardingGuideOpen] = useState(false);
   const [authModalReason, setAuthModalReason] = useState<string | null>(null);
   const [pendingActionAfterLogin, setPendingActionAfterLogin] = useState<(() => void) | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatListing, setChatListing] = useState<Listing | null>(null);
 
+  // Dark Mode State
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('awn_dark_mode') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      if (isDarkMode) {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('awn_dark_mode', 'true');
+      } else {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('awn_dark_mode', 'false');
+      }
+    } catch {}
+  }, [isDarkMode]);
+
+  const handleToggleDarkMode = () => {
+    setIsDarkMode((prev) => !prev);
+  };
+
   // Warning Popups (from Mourjan screenshots)
   const [warningType, setWarningType] = useState<'scam_warning' | 'publishing_rules' | null>(null);
 
   // Handle successful login
-  const handleLoginSuccess = (user: AuthUser) => {
+  const handleLoginSuccess = (user: AuthUser, isNewRegistration?: boolean) => {
     setCurrentUser(user);
     try {
       localStorage.setItem('awn_current_user', JSON.stringify(user));
     } catch {}
     setIsAuthModalOpen(false);
     setAuthModalReason(null);
+
+    // Show onboarding guide if registering newly
+    if (isNewRegistration) {
+      setIsOnboardingGuideOpen(true);
+    }
 
     // If the user was trying to perform an action (e.g. view details or post ad), resume it
     if (pendingActionAfterLogin) {
@@ -342,7 +374,7 @@ export default function App() {
 
   // App Content Component (can be rendered plain or inside phone shell)
   const appContent = (
-    <div className={`min-h-screen bg-[#f4f5f7] flex flex-col ${isAr ? 'rtl font-[\'Cairo\']' : 'ltr'} text-right`}>
+    <div className={`min-h-screen flex flex-col transition-colors duration-200 ${isDarkMode ? 'dark bg-slate-950 text-slate-100' : 'bg-[#f4f5f7] text-[#1e1e24]'} ${isAr ? 'rtl' : 'ltr'} text-right`}>
       {/* Header */}
       <Header
         currentRegion={selectedRegion}
@@ -366,6 +398,8 @@ export default function App() {
         lang={lang}
         onToggleLang={() => setLang((prev) => (prev === 'ar' ? 'en' : 'ar'))}
         onOpenRules={() => setWarningType('publishing_rules')}
+        isDarkMode={isDarkMode}
+        onToggleDarkMode={handleToggleDarkMode}
       />
 
       {/* Main Container */}
@@ -771,6 +805,18 @@ export default function App() {
           lang={lang}
         />
       )}
+
+      {/* Onboarding Visual Splash Guide */}
+      <OnboardingGuideModal
+        isOpen={isOnboardingGuideOpen}
+        onClose={() => setIsOnboardingGuideOpen(false)}
+        currentUser={currentUser}
+        onOpenEditProfile={() => {
+          setIsOnboardingGuideOpen(false);
+          setIsAccountOpen(true);
+        }}
+        lang={lang}
+      />
     </>
   );
 }

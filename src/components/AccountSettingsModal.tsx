@@ -23,12 +23,16 @@ export const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
 }) => {
   const [accountType, setAccountType] = useState<AccountType>(currentUser?.accountType || 'individual');
   const [name, setName] = useState(currentUser?.name || '');
+  const [phone, setPhone] = useState(currentUser?.phone || '');
+  const [bio, setBio] = useState(currentUser?.bio || '');
   const [savedSuccess, setSavedSuccess] = useState(false);
   const isAr = lang === 'ar';
 
   useEffect(() => {
     if (currentUser) {
       setName(currentUser.name);
+      setPhone(currentUser.phone || '');
+      setBio(currentUser.bio || '');
       setAccountType(currentUser.accountType);
     }
   }, [currentUser]);
@@ -40,6 +44,8 @@ export const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
       onUpdateUser({
         ...currentUser,
         name: name.trim() || currentUser.name,
+        phone: phone.trim() || currentUser.phone,
+        bio: bio.trim(),
         accountType,
       });
     }
@@ -143,7 +149,7 @@ export const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
           {/* Name input */}
           <div>
             <label className="text-xs font-bold text-slate-700 block mb-1">
-              {isAr ? 'الاسم أو اسم الشركة' : 'Full Name or Company Name'}
+              {isAr ? 'الاسم الكامل أو اسم المنشأة' : 'Full Name or Company Name'}
             </label>
             <input
               type="text"
@@ -153,58 +159,78 @@ export const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
             />
           </div>
 
-          {/* Account Type Selection */}
+          {/* Phone Number input */}
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">
+              {isAr ? 'رقم الهاتف للتواصل (+967)' : 'Contact Phone Number (+967)'}
+            </label>
+            <div className="relative flex items-center">
+              <div className="absolute right-2.5 flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded-md pointer-events-none">
+                <span className="text-sm">🇾🇪</span>
+                <span dir="ltr">+967</span>
+              </div>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="77X XXX XXX"
+                className="w-full bg-white border border-slate-300 rounded-lg p-2.5 pr-24 pl-3 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#68142c]"
+              />
+            </div>
+          </div>
+
+          {/* Bio / Profession */}
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">
+              {isAr ? 'المسمى المهني / نبذة تعريفية' : 'Job Title / Professional Bio'}
+            </label>
+            <textarea
+              rows={2}
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              placeholder={isAr ? 'مثال: شيف مأكولات شعبية، مهندس ديكور، مؤسسة مقاولات عامة...' : 'e.g. Executive Chef, General Contractor...'}
+              className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#68142c]"
+            />
+          </div>
+
+          {/* Account Type Selection (2-Choice Prominent) */}
           <div>
             <label className="text-xs font-bold text-amber-900 block mb-2">
-              {isAr ? 'نوع الحساب' : 'Account Type'}
+              {isAr ? 'نوع الحساب في عون يمن' : 'Account Type'}
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={() => setAccountType('individual')}
-                className={`p-2.5 rounded-lg text-xs font-bold border text-center transition-all ${
+                className={`p-3 rounded-xl border text-right transition-all flex flex-col justify-between ${
                   accountType === 'individual'
-                    ? 'bg-[#68142c] text-white border-[#68142c] shadow-xs'
+                    ? 'bg-[#68142c] text-white border-[#68142c] shadow-sm ring-2 ring-[#68142c]/30'
                     : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                 }`}
               >
-                {isAr ? 'حساب شخصي' : 'Personal'}
+                <div className="font-bold text-xs">
+                  {isAr ? 'مهني / عامل / باحث' : 'Worker / Talent'}
+                </div>
+                <div className={`text-[10px] mt-0.5 ${accountType === 'individual' ? 'text-slate-200' : 'text-slate-500'}`}>
+                  {isAr ? 'أفراد، فنيين، كوادر وحرفيين' : 'Job seekers & professionals'}
+                </div>
               </button>
 
               <button
                 type="button"
                 onClick={() => setAccountType('company')}
-                className={`p-2.5 rounded-lg text-xs font-bold border text-center transition-all ${
+                className={`p-3 rounded-xl border text-right transition-all flex flex-col justify-between ${
                   accountType === 'company'
-                    ? 'bg-[#68142c] text-white border-[#68142c] shadow-xs'
+                    ? 'bg-[#68142c] text-white border-[#68142c] shadow-sm ring-2 ring-[#68142c]/30'
                     : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                 }`}
               >
-                {isAr ? 'شركة' : 'Company'}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setAccountType('agency')}
-                className={`p-2.5 rounded-lg text-xs font-bold border text-center transition-all ${
-                  accountType === 'agency'
-                    ? 'bg-[#68142c] text-white border-[#68142c] shadow-xs'
-                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                }`}
-              >
-                {isAr ? 'وكالة توظيف' : 'Agency'}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setAccountType('advertiser')}
-                className={`p-2.5 rounded-lg text-xs font-bold border text-center transition-all ${
-                  accountType === 'advertiser'
-                    ? 'bg-[#68142c] text-white border-[#68142c] shadow-xs'
-                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                }`}
-              >
-                {isAr ? 'معلن تجاري' : 'Advertiser'}
+                <div className="font-bold text-xs">
+                  {isAr ? 'مالك عمل / شركة' : 'Business / Employer'}
+                </div>
+                <div className={`text-[10px] mt-0.5 ${accountType === 'company' ? 'text-slate-200' : 'text-slate-500'}`}>
+                  {isAr ? 'منشآت، محلات، وجهات توظيف' : 'Companies & establishments'}
+                </div>
               </button>
             </div>
           </div>
