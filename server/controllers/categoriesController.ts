@@ -381,7 +381,7 @@ const FALLBACK_CATEGORIES = [
       { "id": "serv-contracting-co", "nameAr": "مقاولات وإنشاءات", "nameEn": "General Contracting", "count": 6, "slug": "contracting-co", "serviceType": "company", "icon": "hard-hat" },
       { "id": "serv-recruitment", "nameAr": "استقدام عمالة", "nameEn": "Manpower Supply", "count": 3, "slug": "recruitment", "serviceType": "company", "icon": "users" },
       { "id": "serv-realestate", "nameAr": "خدمات عقارية", "nameEn": "Real Estate Services", "count": 4, "slug": "realestate", "serviceType": "company", "icon": "building" },
-      { "id": "serv-travel", "nameAr: "سياحة وسفر", "nameEn": "Travel & Tourism", "count": 3, "slug": "travel", "serviceType": "company", "icon": "plane" },
+      { "id": "serv-travel", "nameAr": "سياحة وسفر", "nameEn": "Travel & Tourism", "count": 3, "slug": "travel", "serviceType": "company", "icon": "plane" },
       { "id": "serv-law", "nameAr": "محاماة وقانون", "nameEn": "Legal & Law Services", "count": 2, "slug": "law", "serviceType": "company", "icon": "scale" },
       { "id": "serv-paperwork", "nameAr": "تخليص معاملات", "nameEn": "Government Clearance", "count": 4, "slug": "paperwork", "serviceType": "company", "icon": "file-check" },
       { "id": "serv-security", "nameAr": "حراسة وأمن شركات", "nameEn": "Corporate Security", "count": 2, "slug": "security", "serviceType": "company", "icon": "shield" },
