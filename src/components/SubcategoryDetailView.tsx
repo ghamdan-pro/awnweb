@@ -189,10 +189,10 @@ export const SubcategoryDetailView: React.FC<SubcategoryDetailViewProps> = ({
               </div>
               <div>
                 <span className="font-bold text-xs sm:text-sm block">
-                  {isAr ? 'إعلانات العمال والكفاءات' : 'Worker Profiles'}
+                  {isAr ? 'يطلب عمل' : 'Job Seekers'}
                 </span>
                 <span className="text-[10px] text-slate-500 block">
-                  {isAr ? 'المهنيين والباحثين عن عمل' : 'Skilled Workers & Resumes'}
+                  {isAr ? 'باحثين عن عمل وكفاءات مهنية' : 'Job Seekers & Artisans'}
                 </span>
               </div>
             </div>
@@ -229,10 +229,10 @@ export const SubcategoryDetailView: React.FC<SubcategoryDetailViewProps> = ({
               </div>
               <div>
                 <span className="font-bold text-xs sm:text-sm block">
-                  {isAr ? 'تقديم خدمات الشركات' : 'Company Services'}
+                  {isAr ? 'خدمات' : 'Services'}
                 </span>
                 <span className="text-[10px] text-slate-500 block">
-                  {isAr ? 'عروض وتجهيزات المؤسسات المعتمدة' : 'Verified Company Offerings'}
+                  {isAr ? 'عروض خدمات شركات ومؤسسات' : 'Corporate & Business Offerings'}
                 </span>
               </div>
             </div>

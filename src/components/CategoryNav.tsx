@@ -16,6 +16,7 @@ export const CategoryNav: React.FC<CategoryNavProps> = ({
   lang
 }) => {
   const [subSearchQuery, setSubSearchQuery] = useState('');
+  const [serviceTab, setServiceTab] = useState<'individual' | 'company' | 'all'>('individual');
   const isAr = lang === 'ar';
 
   const activeCategory = CATEGORIES.find((c) => c.id === selectedCategoryId);
@@ -41,6 +42,10 @@ export const CategoryNav: React.FC<CategoryNavProps> = ({
   // If a category is selected, show its subcategories drill-down view (Mourjan style)
   if (activeCategory) {
     const filteredSubs = activeCategory.subcategories.filter((sub) => {
+      // Filter by service type if in services category
+      if (activeCategory.id === 'services' && serviceTab !== 'all') {
+        if (sub.serviceType && sub.serviceType !== serviceTab) return false;
+      }
       if (!subSearchQuery.trim()) return true;
       const q = subSearchQuery.toLowerCase();
       return sub.nameAr.toLowerCase().includes(q) || sub.nameEn.toLowerCase().includes(q);
@@ -71,6 +76,45 @@ export const CategoryNav: React.FC<CategoryNavProps> = ({
             {activeCategory.count} {isAr ? 'إعلان' : 'Ads'}
           </span>
         </div>
+
+        {/* Individual vs Company Services Tabs (خدمات أفراد / خدمات شركات) */}
+        {activeCategory.id === 'services' && (
+          <div className="bg-slate-100 p-2 border-b border-slate-200 flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setServiceTab('individual')}
+              className={`flex-1 py-2 px-3 text-xs sm:text-sm font-black rounded-lg transition-all ${
+                serviceTab === 'individual'
+                  ? 'bg-[#68142c] text-white shadow-sm'
+                  : 'bg-white text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              {isAr ? 'خدمات أفراد (مهنيين وحرفيين)' : 'Individual Services'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setServiceTab('company')}
+              className={`flex-1 py-2 px-3 text-xs sm:text-sm font-black rounded-lg transition-all ${
+                serviceTab === 'company'
+                  ? 'bg-[#68142c] text-white shadow-sm'
+                  : 'bg-white text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              {isAr ? 'خدمات شركات ومؤسسات' : 'Company Services'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setServiceTab('all')}
+              className={`py-2 px-3 text-xs sm:text-sm font-bold rounded-lg transition-all ${
+                serviceTab === 'all'
+                  ? 'bg-amber-500 text-slate-950 font-black shadow-sm'
+                  : 'bg-white text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              {isAr ? 'الكل' : 'All'}
+            </button>
+          </div>
+        )}
 
         {/* Search within subcategories */}
         <div className="p-3 border-b border-slate-100 bg-slate-50">

@@ -9,6 +9,8 @@ export interface ModerationResult {
   isValid: boolean;
   reason?: string;
   category?: 'duplication' | 'profanity' | 'immoral' | 'political' | 'images' | 'passed';
+  duplicateId?: string;
+  isDuplicateAutoReplace?: boolean;
 }
 
 // قائمة الكلمات والمصطلحات غير الأخلاقية الممنوعة
@@ -95,12 +97,15 @@ export function moderateAdContent(
     });
 
     if (duplicate) {
+      // المطلوب: عند إضافة إعلان مكرر يتم حذف أحدهما تلقائياً (حذف القديم وتثبيت الجديد)
       return {
-        isValid: false,
+        isValid: true,
         category: 'duplication',
+        isDuplicateAutoReplace: true,
+        duplicateId: duplicate.id,
         reason: isAr
-          ? `الإعلان مكرر! لديك إعلان سابق نشط بعنوان "${duplicate.title}". يمنع تكرار الإعلانات لتجنب حظر الحساب وضمان تكافؤ الفرص.`
-          : 'Duplicate listing! You already have an active ad with the same title and phone number.',
+          ? `تم رصد إعلان مكرر سابق لنفس الرقم ("${duplicate.title}"). سيتم تلقائياً حذف الإعلان القديم واستبداله بهذا الإعلان الجديد المحدث.`
+          : 'A previous duplicate ad was detected. The older listing will be automatically deleted and replaced with this update.',
       };
     }
   }

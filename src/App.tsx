@@ -272,9 +272,26 @@ export default function App() {
     );
   };
 
-  // Add new ad
+  // Add new ad (with automatic duplicate removal: عند إضافة إعلان مكرر يتم حذف أحدهما)
   const handleAdCreated = async (newAd: Listing) => {
-    const updatedListings = [newAd, ...listings];
+    const cleanPhone = newAd.contactPhone.replace(/\D/g, '').slice(-9);
+    const normTitle = newAd.title.trim().toLowerCase();
+
+    // حذف الإعلان المكرر الأقدم تلقائياً
+    const filteredRemaining = listings.filter((item) => {
+      if (item.id === newAd.id) return false;
+      const itemPhone = item.contactPhone.replace(/\D/g, '').slice(-9);
+      if (cleanPhone && itemPhone === cleanPhone) {
+        const itemTitle = item.title.trim().toLowerCase();
+        if (itemTitle === normTitle || (itemTitle.length > 8 && normTitle.includes(itemTitle))) {
+          apiService.deleteListing(item.id).catch(() => {});
+          return false;
+        }
+      }
+      return true;
+    });
+
+    const updatedListings = [newAd, ...filteredRemaining];
     setListings(updatedListings);
     localCacheDb.putListings(updatedListings);
     try {

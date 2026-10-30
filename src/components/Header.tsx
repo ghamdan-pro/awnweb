@@ -98,20 +98,20 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
         {/* Logo & Identity */}
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-          <div className="w-12 h-12 bg-white rounded-lg p-0.5 shadow-sm overflow-hidden flex items-center justify-center shrink-0 border border-amber-400/40">
+          <div className="w-13 h-13 sm:w-14 sm:h-14 bg-white rounded-xl p-1 shadow-md overflow-hidden flex items-center justify-center shrink-0 border-2 border-amber-400">
             <img
-              src="/assets/aistudio/WhatsApp_Image_2026-10-26_at_8.27.25_PM_c771822c.jpeg"
-              alt="شعار عون يمن"
-              className="w-full h-full object-contain"
+              src="/assets/awn-logo.png"
+              alt="شعار عون يمن Awn. Yemen"
+              className="w-full h-full object-contain drop-shadow-sm"
             />
           </div>
           <div className="leading-tight">
             <div className="flex items-center gap-1.5">
-              <span className="text-xl font-black tracking-wide text-white font-['Cairo']">عون يمن</span>
-              <span className="text-xs text-amber-400 font-bold bg-amber-400/10 px-1.5 py-0.5 rounded border border-amber-400/20">Awn.Yemen</span>
+              <span className="text-xl sm:text-2xl font-black tracking-wide text-white font-['Cairo']">عون يمن</span>
+              <span className="text-xs text-amber-300 font-bold bg-amber-400/20 px-2 py-0.5 rounded-full border border-amber-400/40 shadow-sm">Awn.Yemen</span>
             </div>
-            <p className="text-[11px] text-rose-100/80 font-normal hidden sm:block">
-              {isAr ? 'الوسيط المجاني بين مقدم الخدمة وطالبها' : 'Free marketplace between workers and employers'}
+            <p className="text-[11px] text-amber-100 font-medium hidden sm:block">
+              {isAr ? 'الوسيط الذكي للأعمال والخدمات والوظائف' : 'Smart marketplace for services, jobs & listings'}
             </p>
           </div>
         </div>

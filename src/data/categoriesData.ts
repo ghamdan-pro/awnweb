@@ -5,6 +5,7 @@ export interface SubCategory {
   count: number;
   icon?: string;
   slug: string;
+  serviceType?: 'individual' | 'company'; // خدمات أفراد vs خدمات شركات
   fields?: {
     key: string;
     labelAr: string;
@@ -89,44 +90,46 @@ export const CATEGORIES: Category[] = [
     id: 'services',
     nameAr: 'خدمات',
     nameEn: 'Services',
-    count: 20,
+    count: 32,
     icon: 'Wrench',
     slug: 'services',
     color: '#68142c',
     subcategories: [
-      { id: 'serv-business', nameAr: 'اعمال واستثمار', nameEn: 'Business & Investment', count: 5, slug: 'business' },
-      { id: 'serv-advertising', nameAr: 'دعاية واعلان', nameEn: 'Advertising & Marketing', count: 4, slug: 'advertising' },
-      { id: 'serv-professional', nameAr: 'خدمات احترافية', nameEn: 'Professional Services', count: 2, slug: 'professional' },
-      { id: 'serv-recruitment', nameAr: 'استقدام عمالة', nameEn: 'Manpower Supply', count: 1, slug: 'recruitment' },
-      { id: 'serv-buildings', nameAr: 'المباني والمنازل', nameEn: 'Buildings & Homes', count: 1, slug: 'buildings' },
-      { id: 'serv-cars', nameAr: 'خدمات السيارات', nameEn: 'Auto Services', count: 1, slug: 'cars' },
-      { id: 'serv-maintenance', nameAr: 'خدمات الصيانة', nameEn: 'Maintenance Services', count: 1, slug: 'maintenance' },
-      { id: 'serv-general', nameAr: 'خدمات عامة', nameEn: 'General Services', count: 1, slug: 'general' },
-      { id: 'serv-realestate', nameAr: 'خدمات عقارية', nameEn: 'Real Estate Services', count: 1, slug: 'realestate' },
-      { id: 'serv-travel', nameAr: 'سياحة وسفر', nameEn: 'Travel & Tourism', count: 1, slug: 'travel' },
-      { id: 'serv-contracting', nameAr: 'مقاولات', nameEn: 'Contracting', count: 1, slug: 'contracting' },
-      { id: 'serv-hr', nameAr: 'موارد بشرية', nameEn: 'HR Consulting', count: 1, slug: 'hr' },
-      { id: 'serv-telecom', nameAr: 'اتصالات', nameEn: 'Telecom', count: 0, slug: 'telecom' },
-      { id: 'serv-internet', nameAr: 'انترنت', nameEn: 'Internet Services', count: 0, slug: 'internet' },
-      { id: 'serv-car-rental', nameAr: 'تأجير سيارات', nameEn: 'Car Rental', count: 0, slug: 'car-rental' },
-      { id: 'serv-paperwork', nameAr: 'تخليص معاملات', nameEn: 'Paperwork Clearance', count: 0, slug: 'paperwork' },
-      { id: 'serv-translation', nameAr: 'ترجمة', nameEn: 'Translation', count: 0, slug: 'translation' },
-      { id: 'serv-entertainment', nameAr: 'تسلية', nameEn: 'Entertainment', count: 0, slug: 'entertainment' },
-      { id: 'serv-events', nameAr: 'تنظيم حفلات', nameEn: 'Event Management', count: 0, slug: 'events' },
-      { id: 'serv-security', nameAr: 'حراسة وأمن', nameEn: 'Security Services', count: 0, slug: 'security' },
-      { id: 'serv-computers', nameAr: 'حواسيب', nameEn: 'Computer Repair', count: 0, slug: 'computers' },
-      { id: 'serv-cleaning', nameAr: 'خدمات تنظيف', nameEn: 'Cleaning Services', count: 0, slug: 'cleaning' },
-      { id: 'serv-agriculture', nameAr: 'خدمات زراعية', nameEn: 'Agricultural Services', count: 0, slug: 'agriculture' },
-      { id: 'serv-tutoring', nameAr: 'دروس خصوصية', nameEn: 'Private Tutoring', count: 0, slug: 'tutoring' },
-      { id: 'serv-shipping', nameAr: 'شحن', nameEn: 'Shipping & Logistics', count: 0, slug: 'shipping' },
-      { id: 'serv-beauty', nameAr: 'صحة وجمال', nameEn: 'Health & Beauty', count: 0, slug: 'beauty' },
-      { id: 'serv-tax', nameAr: 'ضريبة ومال', nameEn: 'Tax & Accounting', count: 0, slug: 'tax' },
-      { id: 'serv-home-cooking', nameAr: 'طبخ منزلي', nameEn: 'Home Cooking', count: 0, slug: 'home-cooking' },
-      { id: 'serv-law', nameAr: 'محاماة وقانون', nameEn: 'Legal Services', count: 0, slug: 'law' },
-      { id: 'serv-flatshare', nameAr: 'مشاركة سكن', nameEn: 'Roommate / Flatshare', count: 0, slug: 'flatshare' },
-      { id: 'serv-lostfound', nameAr: 'مفقودات', nameEn: 'Lost & Found', count: 0, slug: 'lostfound' },
-      { id: 'serv-pestcontrol', nameAr: 'مكافحة الحشرات', nameEn: 'Pest Control', count: 0, slug: 'pestcontrol' },
-      { id: 'serv-training', nameAr: 'مهارات وتدريب', nameEn: 'Skills & Training', count: 0, slug: 'training' }
+      // === خدمات أفراد (Individual / Artisan Services) ===
+      { id: 'serv-electricity', nameAr: 'كهرباء', nameEn: 'Electrician & Electrical', count: 12, slug: 'electricity', serviceType: 'individual', icon: 'zap' },
+      { id: 'serv-carpentry', nameAr: 'نجارة', nameEn: 'Carpentry & Woodwork', count: 9, slug: 'carpentry', serviceType: 'individual', icon: 'hammer' },
+      { id: 'serv-auto-mechanic', nameAr: 'ميكانيك', nameEn: 'Auto Mechanic', count: 14, slug: 'auto-mechanic', serviceType: 'individual', icon: 'car' },
+      { id: 'serv-auto-electrician', nameAr: 'كهربائي سيارات', nameEn: 'Auto Electrician', count: 8, slug: 'auto-electrician', serviceType: 'individual', icon: 'battery' },
+      { id: 'serv-plumbing', nameAr: 'سباكة', nameEn: 'Plumbing & Pipes', count: 11, slug: 'plumbing', serviceType: 'individual', icon: 'droplet' },
+      { id: 'serv-nursing', nameAr: 'تمريض', nameEn: 'Home Nursing & Care', count: 6, slug: 'nursing', serviceType: 'individual', icon: 'heart-pulse' },
+      { id: 'serv-mobile-repair', nameAr: 'صيانة جوال', nameEn: 'Mobile Phone Repair', count: 15, slug: 'mobile-repair', serviceType: 'individual', icon: 'smartphone' },
+      { id: 'serv-ac-cooling', nameAr: 'تبريد وتكييف', nameEn: 'AC & Cooling Repair', count: 7, slug: 'ac-cooling', serviceType: 'individual', icon: 'wind' },
+      { id: 'serv-construction', nameAr: 'بناء وتشطيبات', nameEn: 'Construction & Finishing', count: 10, slug: 'construction', serviceType: 'individual', icon: 'paint-roller' },
+      { id: 'serv-electronics-repair', nameAr: 'صيانة إلكترونيات', nameEn: 'Electronics & TV Repair', count: 8, slug: 'electronics-repair', serviceType: 'individual', icon: 'cpu' },
+      { id: 'serv-domestic-help', nameAr: 'عامل منزلي', nameEn: 'Domestic Help & Cleaning', count: 6, slug: 'domestic-help', serviceType: 'individual', icon: 'home' },
+      { id: 'serv-gardening', nameAr: 'منسق حدائق', nameEn: 'Gardening & Landscaping', count: 4, slug: 'gardening', serviceType: 'individual', icon: 'trees' },
+      { id: 'serv-private-tutor', nameAr: 'مدرس خصوصي', nameEn: 'Private Tutoring', count: 7, slug: 'private-tutor', serviceType: 'individual', icon: 'graduation-cap' },
+      { id: 'serv-moving-delivery', nameAr: 'شحن ونقل وتوصيل', nameEn: 'Moving & Delivery', count: 13, slug: 'moving-delivery', serviceType: 'individual', icon: 'truck' },
+      { id: 'serv-home-services', nameAr: 'خدمات منزلية', nameEn: 'General Home Services', count: 9, slug: 'home-services', serviceType: 'individual', icon: 'sparkles' },
+      { id: 'serv-photography', nameAr: 'تصوير', nameEn: 'Photography & Videography', count: 5, slug: 'photography', serviceType: 'individual', icon: 'camera' },
+      { id: 'serv-hotel-hospitality', nameAr: 'خدمات فندقية', nameEn: 'Hotel & Hospitality Services', count: 3, slug: 'hotel-hospitality', serviceType: 'individual', icon: 'utensils' },
+      { id: 'serv-other', nameAr: 'أخرى', nameEn: 'Other Services', count: 8, slug: 'other-services', serviceType: 'individual', icon: 'more-horizontal' },
+
+      // === خدمات شركات (Corporate / Commercial Services) ===
+      { id: 'serv-business', nameAr: 'اعمال واستثمار', nameEn: 'Business & Investment', count: 5, slug: 'business', serviceType: 'company', icon: 'briefcase' },
+      { id: 'serv-advertising', nameAr: 'دعاية واعلان', nameEn: 'Advertising & Marketing', count: 4, slug: 'advertising', serviceType: 'company', icon: 'megaphone' },
+      { id: 'serv-contracting-co', nameAr: 'مقاولات وإنشاءات', nameEn: 'General Contracting', count: 6, slug: 'contracting-co', serviceType: 'company', icon: 'hard-hat' },
+      { id: 'serv-recruitment', nameAr: 'استقدام عمالة', nameEn: 'Manpower Supply', count: 3, slug: 'recruitment', serviceType: 'company', icon: 'users' },
+      { id: 'serv-realestate', nameAr: 'خدمات عقارية', nameEn: 'Real Estate Services', count: 4, slug: 'realestate', serviceType: 'company', icon: 'building' },
+      { id: 'serv-travel', nameAr: 'سياحة وسفر', nameEn: 'Travel & Tourism', count: 3, slug: 'travel', serviceType: 'company', icon: 'plane' },
+      { id: 'serv-law', nameAr: 'محاماة وقانون', nameEn: 'Legal & Law Services', count: 2, slug: 'law', serviceType: 'company', icon: 'scale' },
+      { id: 'serv-paperwork', nameAr: 'تخليص معاملات', nameEn: 'Government Clearance', count: 4, slug: 'paperwork', serviceType: 'company', icon: 'file-check' },
+      { id: 'serv-security', nameAr: 'حراسة وأمن شركات', nameEn: 'Corporate Security', count: 2, slug: 'security', serviceType: 'company', icon: 'shield' },
+      { id: 'serv-tax', nameAr: 'ضريبة ومحاسبة شركات', nameEn: 'Corporate Tax & Accounting', count: 3, slug: 'tax', serviceType: 'company', icon: 'calculator' },
+      { id: 'serv-events', nameAr: 'تنظيم مؤتمرات وفعاليات', nameEn: 'Event Management', count: 2, slug: 'events', serviceType: 'company', icon: 'calendar' },
+      { id: 'serv-pestcontrol', nameAr: 'مكافحة الحشرات والتعقيم', nameEn: 'Commercial Pest Control', count: 2, slug: 'pestcontrol', serviceType: 'company', icon: 'bug' },
+      { id: 'serv-corporate-it', nameAr: 'شبكات وتقنية معلومات', nameEn: 'IT & Enterprise Networks', count: 3, slug: 'corporate-it', serviceType: 'company', icon: 'server' },
+      { id: 'serv-freight-shipping', nameAr: 'شحن بضائع دولي', nameEn: 'Freight & Global Logistics', count: 2, slug: 'freight-shipping', serviceType: 'company', icon: 'container' }
     ]
   },
   {

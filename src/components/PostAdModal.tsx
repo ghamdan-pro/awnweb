@@ -78,10 +78,15 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
   // Dynamic Specs Map
   const [specs, setSpecs] = useState<Record<string, string>>({});
 
-  // Image Slots
+  // Image Slots (Max 2 Photos only as requested)
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const [uploadedImages, setUploadedImages] = useState<string[]>([
     '/assets/aistudio/WhatsApp_Image_2026-10-26_at_10.38.17_PM_f6350e73.jpeg',
   ]);
+
+  // Featured Ad Target Location (Optional)
+  const [featuredTargetCountry, setFeaturedTargetCountry] = useState<string>('ye');
+  const [featuredTargetRegion, setFeaturedTargetRegion] = useState<string>('all');
 
   // Validation errors & Phone consent
   const [phoneConsent, setPhoneConsent] = useState(false);
@@ -101,21 +106,41 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
     currentCategory.subcategories.find((s) => s.id === selectedSubCatId) ||
     currentCategory.subcategories[0];
 
-  const handleAddImagePlaceholder = () => {
-    if (uploadedImages.length >= 10) return;
+  // Handle local image file upload (converts to data URL preview)
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const remainingSlots = 2 - uploadedImages.length;
+    if (remainingSlots <= 0) return;
+
+    Array.from(files).slice(0, remainingSlots).forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setUploadedImages((prev) => {
+            if (prev.length >= 2) return prev;
+            return [...prev, event.target!.result as string];
+          });
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    if (e.target) e.target.value = '';
+  };
+
+  const handleAddSampleImage = () => {
+    if (uploadedImages.length >= 2) return;
     const sampleUrls = [
       'https://images.unsplash.com/photo-1544025162-d76694265947?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=800&auto=format&fit=crop&q=80',
       'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1555244162-803834f70033?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=800&auto=format&fit=crop&q=80',
     ];
-    const nextUrl = sampleUrls[uploadedImages.length % sampleUrls.length];
-    setUploadedImages([...uploadedImages, nextUrl]);
+    const nextUrl = sampleUrls.find((u) => !uploadedImages.includes(u)) || sampleUrls[0];
+    setUploadedImages((prev) => [...prev, nextUrl]);
   };
 
   const handleRemoveImage = (index: number) => {
-    setUploadedImages(uploadedImages.filter((_, i) => i !== index));
+    setUploadedImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const validate = () => {
@@ -306,12 +331,12 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
           {/* 1. Category & Subcategory Selectors */}
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
             <label className="text-xs sm:text-sm font-bold text-slate-900 block">
-              {isAr ? '1. اختيار القسم الرئيسي والفرعي' : '1. Category & Subcategory'}
+              {isAr ? '1. اختيار القسم الرئيسي والقسم الفرعي التابع له:' : '1. Category & Subcategory:'}
             </label>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <span className="text-xs text-slate-500 block mb-1 font-semibold">
+                <span className="text-xs text-slate-700 block mb-1 font-bold">
                   {isAr ? 'القسم الرئيسي' : 'Main Category'}
                 </span>
                 <select
@@ -324,7 +349,7 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
                     }
                     setSpecs({});
                   }}
-                  className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-[#68142c]"
+                  className="w-full bg-white border-2 border-slate-300 rounded-lg p-2.5 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-[#68142c] focus:border-[#68142c]"
                 >
                   {CATEGORIES.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -335,8 +360,8 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
               </div>
 
               <div>
-                <span className="text-xs text-slate-500 block mb-1 font-semibold">
-                  {isAr ? 'القسم الفرعي' : 'Subcategory'}
+                <span className="text-xs text-slate-700 block mb-1 font-bold">
+                  {isAr ? 'القسم الفرعي المطلوب' : 'Subcategory'}
                 </span>
                 <select
                   value={selectedSubCatId}
@@ -344,7 +369,7 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
                     setSelectedSubCatId(e.target.value);
                     setSpecs({});
                   }}
-                  className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-[#68142c]"
+                  className="w-full bg-amber-50/50 border-2 border-amber-300 rounded-lg p-2.5 text-sm font-bold text-slate-900 focus:ring-2 focus:ring-[#68142c] focus:border-[#68142c]"
                 >
                   {currentCategory.subcategories.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -354,13 +379,39 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
                 </select>
               </div>
             </div>
+
+            {/* Quick Clickable Subcategory Badges (لفتح الأقسام الفرعية واختيارها فورياً) */}
+            <div className="pt-2 border-t border-slate-200/80">
+              <span className="text-[11px] font-bold text-slate-500 block mb-1.5">
+                {isAr ? 'الأقسام الفرعية المتاحة (اضغط للاختيار المباشر):' : 'Available Subcategories (Click to pick):'}
+              </span>
+              <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto p-1 bg-white rounded-lg border border-slate-200">
+                {currentCategory.subcategories.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedSubCatId(s.id);
+                      setSpecs({});
+                    }}
+                    className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all ${
+                      selectedSubCatId === s.id
+                        ? 'bg-[#68142c] text-white shadow-xs scale-102'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    {isAr ? s.nameAr : s.nameEn}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* 2. الأقسام الثلاثة الرئيسية (Crucial Section Type Selector) */}
           <div className="bg-gradient-to-r from-amber-50/60 to-rose-50/60 p-4 rounded-xl border border-amber-200/90 space-y-2.5">
             <div className="flex items-center justify-between">
               <label className="text-xs sm:text-sm font-bold text-slate-900 block">
-                {isAr ? '2. حدد نوع وطبيعة الإعلان بدقة:' : '2. Select Ad Type & Section:'}
+                {isAr ? '2. حدد طبيعة الإعلان بدقة (فرص عمل / يطلب عمل / خدمات):' : '2. Select Ad Type & Section:'}
               </label>
               <span className="text-[10px] bg-amber-400 text-slate-950 font-black px-2 py-0.5 rounded">
                 {isAr ? 'مهم جداً' : 'Required'}
@@ -379,7 +430,7 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
               >
                 <div className="flex items-center gap-1.5 font-bold text-xs">
                   <Briefcase size={14} />
-                  <span>{isAr ? 'فرصة عمل شاغرة' : 'Job Vacancy'}</span>
+                  <span>{isAr ? 'فرص عمل' : 'Job Vacancies'}</span>
                 </div>
                 <span className={`text-[10px] leading-tight ${sectionType === 'job_vacancies' ? 'text-emerald-100' : 'text-slate-500'}`}>
                   {isAr ? 'أصحاب عمل يطلبون موظفين' : 'Employer hiring'}
@@ -397,10 +448,10 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
               >
                 <div className="flex items-center gap-1.5 font-bold text-xs">
                   <UserCheck size={14} />
-                  <span>{isAr ? 'كفاءة مهنية (عامل)' : 'Worker Profile'}</span>
+                  <span>{isAr ? 'يطلب عمل' : 'Job Seeker'}</span>
                 </div>
                 <span className={`text-[10px] leading-tight ${sectionType === 'worker_profiles' ? 'text-amber-100' : 'text-slate-500'}`}>
-                  {isAr ? 'أعرض مهاراتي للتوظيف' : 'Job seeker / Artisan'}
+                  {isAr ? 'باحث عن عمل / كفاءات مهنية' : 'Job seeker / Artisan'}
                 </span>
               </button>
 
@@ -415,10 +466,10 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
               >
                 <div className="flex items-center gap-1.5 font-bold text-xs">
                   <Building2 size={14} />
-                  <span>{isAr ? 'خدمات شركات' : 'Company Services'}</span>
+                  <span>{isAr ? 'خدمات' : 'Services'}</span>
                 </div>
                 <span className={`text-[10px] leading-tight ${sectionType === 'company_services' ? 'text-indigo-100' : 'text-slate-500'}`}>
-                  {isAr ? 'عروض شركات ومؤسسات' : 'Corporate offerings'}
+                  {isAr ? 'عروض خدمات شركات ومؤسسات' : 'Corporate offerings'}
                 </span>
               </button>
             </div>
@@ -621,51 +672,72 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
             </div>
           </div>
 
-          {/* 6. Upload Photo Slots */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-bold text-slate-900 block">
-                {isAr ? 'صور الإعلان' : 'Photos'}
+          {/* 6. Upload Photo Slots (صورتان فقط كحد أقصى) */}
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs sm:text-sm font-bold text-slate-900 block">
+                {isAr ? 'صور الإعلان (صورتان فقط كحد أقصى)' : 'Ad Photos (2 Photos Maximum)'}
               </label>
-              <span className="text-[11px] text-slate-500">
-                {uploadedImages.length}/10 {isAr ? 'صور مضافة' : 'photos'}
+              <span className="text-[11px] font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300">
+                {uploadedImages.length} / 2 {isAr ? 'صور مضافة' : 'photos added'}
               </span>
             </div>
 
-            <div className="flex items-center gap-2 overflow-x-auto pb-2">
-              {uploadedImages.length < 10 && (
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+
+            <div className="flex items-center gap-3 overflow-x-auto pb-2">
+              {uploadedImages.length < 2 && (
                 <button
                   type="button"
-                  onClick={handleAddImagePlaceholder}
-                  className="w-20 h-20 rounded-xl border-2 border-dashed border-slate-300 hover:border-[#68142c] bg-slate-50 hover:bg-slate-100 flex flex-col items-center justify-center shrink-0 transition-all text-slate-500 hover:text-[#68142c]"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-24 h-24 rounded-xl border-2 border-dashed border-[#68142c] hover:bg-[#68142c]/5 bg-white flex flex-col items-center justify-center shrink-0 transition-all text-[#68142c] shadow-xs group"
                 >
-                  <Plus size={22} />
-                  <span className="text-[10px] font-bold mt-1">{isAr ? 'إضافة صورة' : 'Add Slot'}</span>
+                  <Plus size={24} className="group-hover:scale-110 transition-transform" />
+                  <span className="text-[11px] font-bold mt-1">{isAr ? 'إضافة صورة' : 'Upload Photo'}</span>
+                  <span className="text-[9px] text-slate-400">{isAr ? 'من جهازك' : 'From Device'}</span>
+                </button>
+              )}
+
+              {uploadedImages.length < 2 && (
+                <button
+                  type="button"
+                  onClick={handleAddSampleImage}
+                  className="w-24 h-24 rounded-xl border border-dashed border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 flex flex-col items-center justify-center shrink-0 transition-all text-slate-500 shadow-xs"
+                >
+                  <Sparkles size={18} className="text-amber-500" />
+                  <span className="text-[10px] font-bold mt-1 text-slate-700">{isAr ? 'صورة نموذجية' : 'Sample'}</span>
+                  <span className="text-[9px] text-slate-400">{isAr ? 'سريعة' : 'Quick'}</span>
                 </button>
               )}
 
               {uploadedImages.map((imgUrl, idx) => (
                 <div
                   key={idx}
-                  className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-200 shrink-0 group bg-slate-100"
+                  className="relative w-24 h-24 rounded-xl overflow-hidden border-2 border-slate-300 shrink-0 group bg-slate-100 shadow-sm"
                 >
                   <img src={imgUrl} alt="" className="w-full h-full object-cover" />
                   <button
                     type="button"
                     onClick={() => handleRemoveImage(idx)}
-                    className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-red-600 text-white rounded-full transition-colors opacity-90"
+                    className="absolute top-1 right-1 p-1 bg-black/70 hover:bg-red-600 text-white rounded-full transition-colors shadow-xs"
                     title={isAr ? 'حذف الصورة' : 'Remove'}
                   >
-                    <X size={12} />
+                    <X size={13} />
                   </button>
-                  {idx === 0 && (
-                    <span className="absolute bottom-0 inset-x-0 bg-[#68142c] text-white text-[9px] text-center font-bold py-0.5">
-                      {isAr ? 'الرئيسية' : 'Cover'}
-                    </span>
-                  )}
+                  <span className="absolute bottom-0 inset-x-0 bg-black/60 backdrop-blur-xs text-white text-[9px] text-center font-bold py-0.5">
+                    {idx === 0 ? (isAr ? 'الصورة 1 (الرئيسية)' : 'Primary 1') : (isAr ? 'الصورة 2' : 'Photo 2')}
+                  </span>
                 </div>
               ))}
             </div>
+            {errors.images && <p className="text-xs text-rose-600 font-bold">{errors.images}</p>}
           </div>
 
           {/* Mandatory Phone Sharing Consent (Requested by user) */}
@@ -789,6 +861,44 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
                   <span className="font-black text-emerald-800 text-sm">
                     {(currentUser?.walletBalanceYer || 5000).toLocaleString()} ر.ي
                   </span>
+                </div>
+              </div>
+
+              {/* Optional Target Location for Featured Ad (دولة ومحافظة اختياري) */}
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                <span className="font-bold text-slate-800 block text-xs">
+                  {isAr ? 'نطاق ظهور واستهداف الإعلان المميز (اختياري):' : 'Featured Ad Target Location (Optional):'}
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <span className="text-[10px] text-slate-500 block mb-0.5">{isAr ? 'الدولة' : 'Country'}</span>
+                    <select
+                      value={featuredTargetCountry}
+                      onChange={(e) => setFeaturedTargetCountry(e.target.value)}
+                      className="w-full bg-white border border-slate-300 rounded-lg p-1.5 text-xs font-bold"
+                    >
+                      <option value="ye">{isAr ? 'اليمن' : 'Yemen'}</option>
+                      <option value="sa">{isAr ? 'السعودية' : 'Saudi Arabia'}</option>
+                      <option value="all">{isAr ? 'كافة الدول' : 'All Countries'}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-500 block mb-0.5">{isAr ? 'المحافظة' : 'Governorate'}</span>
+                    <select
+                      value={featuredTargetRegion}
+                      onChange={(e) => setFeaturedTargetRegion(e.target.value)}
+                      className="w-full bg-white border border-slate-300 rounded-lg p-1.5 text-xs font-bold"
+                    >
+                      <option value="all">{isAr ? 'كافة المحافظات (أوسع انتشار)' : 'All Governorates'}</option>
+                      <option value="ye-sanaa">{isAr ? 'صنعاء' : 'Sanaa'}</option>
+                      <option value="ye-aden">{isAr ? 'عدن' : 'Aden'}</option>
+                      <option value="ye-taiz">{isAr ? 'تعز' : 'Taiz'}</option>
+                      <option value="ye-hadramout">{isAr ? 'حضرموت' : 'Hadramout'}</option>
+                      <option value="ye-hodeidah">{isAr ? 'الحديدة' : 'Hodeidah'}</option>
+                      <option value="ye-ibb">{isAr ? 'إب' : 'Ibb'}</option>
+                      <option value="ye-marib">{isAr ? 'مأرب' : 'Marib'}</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
