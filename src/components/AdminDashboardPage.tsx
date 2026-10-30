@@ -26,13 +26,27 @@ import {
   X,
   Phone,
   DollarSign,
-  Plus
+  Plus,
+  FileSpreadsheet,
+  Download,
+  FolderTree,
+  Lock,
+  KeyRound,
+  Filter,
+  Check,
+  Tag,
+  Briefcase,
+  Wrench,
+  Building2,
+  Car,
+  Package
 } from 'lucide-react';
 import { Listing } from '../data/mockListings';
-import { CATEGORIES } from '../data/categoriesData';
+import { CATEGORIES, Category, SubCategory } from '../data/categoriesData';
 import { API_CONFIG } from '../config/apiConfig';
-import { AuthUser, DEMO_USERS } from '../types/auth';
+import { AuthUser, DEMO_USERS, getAdminPassword, setAdminPassword, DEFAULT_ADMIN_PASSWORD } from '../types/auth';
 import { apiService } from '../services/apiService';
+import { exportListingsToExcel, exportCategoriesToExcel } from '../utils/exportUtils';
 
 interface AdminDashboardPageProps {
   onBackToSite: () => void;
@@ -60,7 +74,27 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   const [activeTab, setActiveTab] = useState<'kpi' | 'listings' | 'categories' | 'users' | 'system'>('kpi');
   const [searchFilter, setSearchFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [syncStatus, setSyncStatus] = useState<'idle' | 'testing' | 'success'>('idle');
+
+  // Categories state for live management
+  const [categoriesList, setCategoriesList] = useState<Category[]>(() => {
+    const saved = localStorage.getItem('awn_custom_categories');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return CATEGORIES;
+  });
+  const [selectedParentCatId, setSelectedParentCatId] = useState<string>('all');
+  const [categorySearch, setCategorySearch] = useState('');
+
+  // Editing Category / Subcategory state
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editingSubCategory, setEditingSubCategory] = useState<{ parentId: string; sub: SubCategory } | null>(null);
+  const [newSubParentId, setNewSubParentId] = useState<string | null>(null);
+  const [newSubNameAr, setNewSubNameAr] = useState('');
+  const [newSubNameEn, setNewSubNameEn] = useState('');
+  const [newSubSlug, setNewSubSlug] = useState('');
 
   // Analytics Stats (Website visitors, App visitors, Views, Clicks)
   const [analytics, setAnalytics] = useState({
@@ -82,10 +116,23 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   const [editDescription, setEditDescription] = useState('');
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
 
-  // Admin login credentials state if not logged in
-  const [adminUsername, setAdminUsername] = useState('admin@awnyemen.com');
-  const [adminPassword, setAdminPassword] = useState('admin123');
+  // Admin secure login credentials state (No demo bypass)
+  const [adminUsername, setAdminUsername] = useState('');
+  const [adminPasswordInput, setAdminPasswordInput] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
+
+  // Change Admin Password state
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordMsg, setPasswordMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Save categories to localStorage
+  const saveCategories = (updated: Category[]) => {
+    setCategoriesList(updated);
+    try {
+      localStorage.setItem('awn_custom_categories', JSON.stringify(updated));
+    } catch (e) {}
+  };
 
   // Load live analytics stats
   const fetchStats = async () => {
@@ -108,7 +155,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     fetchStats();
   }, [listings]);
 
-  // Handle open edit modal
+  // Handle open edit modal for listings
   const handleOpenEdit = (listing: Listing) => {
     setEditingListing(listing);
     setEditTitle(listing.title);
@@ -122,7 +169,27 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     setSaveSuccessMsg(null);
   };
 
-  // Handle save edits
+  // Quick toggle featured listing
+  const handleToggleFeatured = async (listing: Listing) => {
+    const newStatus = listing.status === 'premium' ? 'active' : 'premium';
+    const updated = { ...listing, status: newStatus as any };
+    onUpdateListing(updated);
+    try {
+      await apiService.updateListing(listing.id, { status: newStatus as any });
+    } catch (e) {}
+  };
+
+  // Quick toggle active/pending listing
+  const handleToggleActive = async (listing: Listing) => {
+    const newStatus = listing.status === 'active' ? 'pending' : 'active';
+    const updated = { ...listing, status: newStatus as any };
+    onUpdateListing(updated);
+    try {
+      await apiService.updateListing(listing.id, { status: newStatus as any });
+    } catch (e) {}
+  };
+
+  // Handle save edits for listings
   const handleSaveListingEdits = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingListing) return;
@@ -139,22 +206,96 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     };
 
     try {
-      const updated = await apiService.updateListing(editingListing.id, updatedData);
+      await apiService.updateListing(editingListing.id, updatedData);
       onUpdateListing({ ...editingListing, ...updatedData });
       setSaveSuccessMsg(isAr ? 'تم حفظ التعديلات بنجاح وتم تحديث الإعلان في المنصة!' : 'Listing updated successfully!');
       setTimeout(() => {
         setEditingListing(null);
         setSaveSuccessMsg(null);
-      }, 1200);
+      }, 1000);
     } catch (err: any) {
-      // Apply local update
       onUpdateListing({ ...editingListing, ...updatedData });
       setSaveSuccessMsg(isAr ? 'تم تطبيق التعديلات محلياً بنجاح!' : 'Applied locally!');
       setTimeout(() => {
         setEditingListing(null);
         setSaveSuccessMsg(null);
-      }, 1200);
+      }, 1000);
     }
+  };
+
+  // Handle save category edits
+  const handleSaveCategoryEdits = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCategory) return;
+    const updated = categoriesList.map((c) => (c.id === editingCategory.id ? editingCategory : c));
+    saveCategories(updated);
+    setEditingCategory(null);
+  };
+
+  // Handle save subcategory edits
+  const handleSaveSubCategoryEdits = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSubCategory) return;
+    const updated = categoriesList.map((c) => {
+      if (c.id !== editingSubCategory.parentId) return c;
+      return {
+        ...c,
+        subcategories: c.subcategories.map((sub) =>
+          sub.id === editingSubCategory.sub.id ? editingSubCategory.sub : sub
+        ),
+      };
+    });
+    saveCategories(updated);
+    setEditingSubCategory(null);
+  };
+
+  // Handle add new subcategory
+  const handleAddNewSubCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSubParentId || !newSubNameAr.trim()) return;
+
+    const newId = `${newSubParentId}-${Date.now().toString().slice(-4)}`;
+    const newSlug = (newSubSlug.trim() || newSubNameAr.trim().replace(/\s+/g, '-')).toLowerCase();
+
+    const newSub: SubCategory = {
+      id: newId,
+      nameAr: newSubNameAr.trim(),
+      nameEn: newSubNameEn.trim() || newSubNameAr.trim(),
+      count: 0,
+      slug: newSlug,
+    };
+
+    const updated = categoriesList.map((c) => {
+      if (c.id !== newSubParentId) return c;
+      return {
+        ...c,
+        subcategories: [...c.subcategories, newSub],
+      };
+    });
+
+    saveCategories(updated);
+    setNewSubParentId(null);
+    setNewSubNameAr('');
+    setNewSubNameEn('');
+    setNewSubSlug('');
+  };
+
+  // Handle change admin password
+  const handleChangePassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordMsg(null);
+    if (!newPassword || newPassword.length < 6) {
+      setPasswordMsg({ type: 'error', text: isAr ? 'يجب أن لا تقل كلمة المرور عن 6 خانات' : 'Password must be at least 6 characters' });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordMsg({ type: 'error', text: isAr ? 'كلمتا المرور غير متطابقتين' : 'Passwords do not match' });
+      return;
+    }
+    setAdminPassword(newPassword.trim());
+    setPasswordMsg({ type: 'success', text: isAr ? 'تم تغيير كلمة مرور المشرف بنجاح!' : 'Admin password updated successfully!' });
+    setNewPassword('');
+    setConfirmPassword('');
   };
 
   const handleTestSync = () => {
@@ -166,13 +307,19 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     }, 800);
   };
 
+  // Secure Admin Authentication verification
   const handleAdminFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
-    if (adminUsername.includes('admin') || adminPassword.includes('admin') || adminUsername === '') {
+    const cleanUsername = adminUsername.trim().toLowerCase();
+    const cleanPassword = adminPasswordInput.trim();
+    const validPass = getAdminPassword();
+    const validAdmins = ['admin', 'admin@awnyemen.com', '770000001', '+967770000001', '777000000', '+967777000000'];
+
+    if ((validAdmins.includes(cleanUsername) || cleanUsername === '') && cleanPassword === validPass) {
       onLoginAsAdmin(DEMO_USERS.admin);
     } else {
-      setAuthError(isAr ? 'بيانات غير صحيحة، يمكنك استخدام زر الدخول السريع أدناه' : 'Invalid credentials, use quick login');
+      setAuthError(isAr ? 'اسم المستخدم أو كلمة المرور للمشرف غير صحيحة!' : 'Invalid admin username or password');
     }
   };
 
@@ -185,10 +332,24 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       l.regionNameAr.toLowerCase().includes(searchFilter.toLowerCase());
 
     const matchesStatus = statusFilter === 'all' || l.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesCategory = categoryFilter === 'all' || l.categoryId === categoryFilter;
+
+    return matchesSearch && matchesStatus && matchesCategory;
   });
 
-  // If user is NOT Admin: Show dedicated Admin Authentication Page
+  // Filter categories
+  const filteredCategories = categoriesList.filter((cat) => {
+    if (selectedParentCatId !== 'all' && cat.id !== selectedParentCatId) return false;
+    if (!categorySearch.trim()) return true;
+    const q = categorySearch.toLowerCase();
+    return (
+      cat.nameAr.toLowerCase().includes(q) ||
+      cat.nameEn.toLowerCase().includes(q) ||
+      cat.subcategories.some((s) => s.nameAr.toLowerCase().includes(q) || s.nameEn.toLowerCase().includes(q))
+    );
+  });
+
+  // If user is NOT Admin: Show dedicated Admin Authentication Page (Secure)
   if (!isAdmin) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4">
@@ -201,12 +362,12 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
               {isAr ? 'لوحة تحكم إدارة عون يمن' : 'Awn Yemen Admin Portal'}
             </h1>
             <p className="text-xs text-slate-400">
-              {isAr ? 'هذه الصفحة مخصصة لإدارة المنصة والتحكم في الإعلانات والإحصائيات' : 'Restricted to platform administrators only'}
+              {isAr ? 'منطقة آمنة ومحمية بكلمة مرور رسمية مخصصة للمشرفين' : 'Restricted secure portal for platform administrators'}
             </p>
           </div>
 
           {authError && (
-            <div className="p-3 bg-rose-950/50 border border-rose-800 rounded-xl text-rose-300 text-xs font-bold flex items-center gap-2">
+            <div className="p-3 bg-rose-950/60 border border-rose-800 rounded-xl text-rose-300 text-xs font-bold flex items-center gap-2">
               <AlertTriangle size={16} className="shrink-0" />
               <span>{authError}</span>
             </div>
@@ -214,44 +375,44 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
 
           <form onSubmit={handleAdminFormSubmit} className="space-y-4 text-xs font-bold">
             <div>
-              <label className="block text-slate-300 mb-1">{isAr ? 'اسم مستخدم الإدارة' : 'Admin Username'}</label>
+              <label className="block text-slate-300 mb-1">{isAr ? 'اسم مستخدم الإدارة أو البريد' : 'Admin Username or Email'}</label>
               <input
                 type="text"
+                required
                 value={adminUsername}
                 onChange={(e) => setAdminUsername(e.target.value)}
+                placeholder="admin@awnyemen.com"
                 className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:ring-2 focus:ring-amber-400 text-sm"
               />
             </div>
             <div>
-              <label className="block text-slate-300 mb-1">{isAr ? 'كلمة المرور' : 'Password'}</label>
+              <label className="block text-slate-300 mb-1">{isAr ? 'كلمة المرور الرسمية' : 'Admin Password'}</label>
               <input
                 type="password"
-                value={adminPassword}
-                onChange={(e) => setAdminPassword(e.target.value)}
+                required
+                value={adminPasswordInput}
+                onChange={(e) => setAdminPasswordInput(e.target.value)}
+                placeholder="••••••••"
                 className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:ring-2 focus:ring-amber-400 text-sm"
               />
             </div>
 
             <button
               type="submit"
-              className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black rounded-xl text-sm shadow-md transition-transform active:scale-98"
+              className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black rounded-xl text-sm shadow-md transition-transform active:scale-98 flex items-center justify-center gap-2"
             >
-              {isAr ? 'دخول لوحة التحكم' : 'Login to Admin Panel'}
+              <Lock size={16} />
+              <span>{isAr ? 'دخول لوحة التحكم المشفرة' : 'Secure Admin Login'}</span>
             </button>
           </form>
 
-          {/* Quick Demo Login */}
-          <div className="pt-2 border-t border-slate-800 space-y-3">
-            <span className="block text-[11px] text-center text-slate-400 font-semibold">
-              {isAr ? 'للتجربة السريعة (1-Click Super Admin):' : 'Instant 1-Click Access:'}
+          <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-xl text-center text-slate-400 text-[11px] leading-relaxed">
+            <Lock size={13} className="inline-block mb-0.5 text-amber-400 ml-1" />
+            <span>
+              {isAr
+                ? 'تم إلغاء زر الدخول التجريبي التلقائي (Demo) لأن المنصة مرفوعة ومحمية لحساب الإدارة.'
+                : '1-Click demo bypass is disabled because the platform is running live in production.'}
             </span>
-            <button
-              onClick={() => onLoginAsAdmin(DEMO_USERS.admin)}
-              className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-400/30 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-sm"
-            >
-              <Shield size={16} className="text-amber-400" />
-              <span>{isAr ? 'الدخول المباشر كمسؤول النظام (Super Admin)' : 'Instant Admin Login'}</span>
-            </button>
           </div>
 
           <div className="text-center pt-2">
@@ -270,7 +431,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
 
   // Admin Logged In: Full Dedicated Page
   return (
-    <div className={`min-h-screen bg-slate-950 text-slate-100 flex flex-col ${isAr ? 'rtl font-[\'Cairo\']' : 'ltr'}`}>
+    <div className={`min-h-screen bg-slate-950 text-slate-100 flex flex-col ${isAr ? "rtl font-['Cairo']" : 'ltr'}`}>
       {/* Top Navbar */}
       <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-30 shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
@@ -281,21 +442,21 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-base sm:text-lg font-black tracking-wide text-white">
-                  {isAr ? 'لوحة تحكم وإدارة منصة عون يمن المركزية' : 'Awn Yemen Central Control Panel'}
+                <h1 className="text-base sm:text-lg font-black text-white">
+                  {isAr ? 'لوحة تحكم إدارة عون يمن' : 'Awn Yemen Admin Dashboard'}
                 </h1>
-                <span className="hidden sm:inline-block bg-amber-400/20 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-400/30">
-                  Super Admin
+                <span className="text-[10px] bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded-full font-bold border border-amber-400/30">
+                  {isAr ? 'صلاحيات كاملة (Super Admin)' : 'Super Admin'}
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400">
-                {isAr ? `المسؤول: ${currentUser?.name || 'مدير النظام'}` : `Logged: ${currentUser?.name}`}
+              <p className="text-[11px] text-slate-400 hidden sm:block">
+                {isAr ? 'التحكم الشامل في الإعلانات، الأقسام، العدادات، وتصدير إكسل' : 'Full control over listings, taxonomy, and exports'}
               </p>
             </div>
           </div>
 
           {/* Quick Actions & Back to Site */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <button
               onClick={handleTestSync}
               className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300 transition-colors border border-slate-700"
@@ -321,7 +482,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
             onClick={() => setActiveTab('kpi')}
             className={`py-3 px-3 flex items-center gap-2 border-b-2 transition-all shrink-0 ${
               activeTab === 'kpi'
-                ? 'border-amber-400 text-amber-400'
+                ? 'border-amber-400 text-amber-400 font-black'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -333,43 +494,43 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
             onClick={() => setActiveTab('listings')}
             className={`py-3 px-3 flex items-center gap-2 border-b-2 transition-all shrink-0 ${
               activeTab === 'listings'
-                ? 'border-amber-400 text-amber-400'
+                ? 'border-amber-400 text-amber-400 font-black'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
             <Layers size={16} />
-            <span>{isAr ? `إدارة الإعلانات وتعديلها (${listings.length})` : `Listings (${listings.length})`}</span>
+            <span>{isAr ? `إدارة وتعديل الإعلانات (${listings.length})` : `Listings (${listings.length})`}</span>
           </button>
 
           <button
             onClick={() => setActiveTab('categories')}
             className={`py-3 px-3 flex items-center gap-2 border-b-2 transition-all shrink-0 ${
               activeTab === 'categories'
-                ? 'border-amber-400 text-amber-400'
+                ? 'border-amber-400 text-amber-400 font-black'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Layers size={16} />
-            <span>{isAr ? `الأقسام (${CATEGORIES.length})` : `Categories (${CATEGORIES.length})`}</span>
+            <FolderTree size={16} />
+            <span>{isAr ? `الأقسام والقوائم (${categoriesList.length} رئيسي • 87 فرعي)` : `Categories (${categoriesList.length})`}</span>
           </button>
 
           <button
             onClick={() => setActiveTab('users')}
             className={`py-3 px-3 flex items-center gap-2 border-b-2 transition-all shrink-0 ${
               activeTab === 'users'
-                ? 'border-amber-400 text-amber-400'
+                ? 'border-amber-400 text-amber-400 font-black'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
             <Users size={16} />
-            <span>{isAr ? 'المستخدمين والمعلنين' : 'Users & Permissions'}</span>
+            <span>{isAr ? 'المستخدمين والأمان' : 'Users & Security'}</span>
           </button>
 
           <button
             onClick={() => setActiveTab('system')}
             className={`py-3 px-3 flex items-center gap-2 border-b-2 transition-all shrink-0 ${
               activeTab === 'system'
-                ? 'border-amber-400 text-amber-400'
+                ? 'border-amber-400 text-amber-400 font-black'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -384,7 +545,6 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         {/* TAB 1: KPIs & 4 Core Required Metrics */}
         {activeTab === 'kpi' && (
           <div className="space-y-6">
-            {/* The 4 Core Metrics Banner: Website Visitors, App Visitors, Ad Views, Ad Clicks */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-black text-white flex items-center gap-2">
@@ -448,84 +608,67 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                     {analytics.totalViews.toLocaleString()}
                   </div>
                   <div className="text-[11px] text-slate-400 font-semibold mt-2">
-                    {isAr ? 'عرض تفاصيل الإعلانات الكاملة' : 'Ad impressions'}
+                    {isAr ? 'استعراض بطاقات وتفاصيل الإعلانات' : 'Card & page views'}
                   </div>
                 </div>
 
-                {/* 4. Ad Clicks Count (to view details) */}
+                {/* 4. Ad Clicks Count */}
                 <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-5 rounded-2xl border border-slate-700/80 shadow-md relative overflow-hidden">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-bold text-slate-400">
-                      {isAr ? 'نقرات الاطلاع على تفاصيل الإعلان' : 'Ad Detail Clicks'}
+                      {isAr ? 'إجمالي نقرات الإعلانات للتفاصيل' : 'Total Ad Clicks'}
                     </span>
                     <div className="p-2 bg-amber-500/20 text-amber-400 rounded-xl">
                       <MousePointerClick size={18} />
                     </div>
                   </div>
-                  <div className="text-3xl font-black text-amber-400 tracking-tight">
+                  <div className="text-3xl font-black text-amber-300 tracking-tight">
                     {analytics.totalClicks.toLocaleString()}
                   </div>
-                  <div className="text-[11px] text-amber-300/80 font-semibold mt-2">
-                    {isAr ? 'نقرات تصفح الإعلان والاتصال' : 'Click-through engagement'}
+                  <div className="text-[11px] text-slate-400 font-semibold mt-2">
+                    {isAr ? 'نقرات فتح التفاصيل والاتصال' : 'Clicks to details & contact'}
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Platform Overview Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
-                <span className="text-xs text-slate-400 block mb-1">{isAr ? 'إجمالي الإعلانات' : 'Total Listings'}</span>
-                <span className="text-2xl font-bold text-white">{listings.length}</span>
-              </div>
-              <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
-                <span className="text-xs text-slate-400 block mb-1">{isAr ? 'إعلانات مميزة' : 'Featured Ads'}</span>
-                <span className="text-2xl font-bold text-amber-400">
-                  {listings.filter((l) => l.status === 'premium').length}
-                </span>
-              </div>
-              <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
-                <span className="text-xs text-slate-400 block mb-1">{isAr ? 'وظائف وكفاءات' : 'Jobs & Talents'}</span>
-                <span className="text-2xl font-bold text-blue-400">
-                  {listings.filter((l) => l.categoryId === 'jobs').length}
-                </span>
-              </div>
-              <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
-                <span className="text-xs text-slate-400 block mb-1">{isAr ? 'خدمات الشركات' : 'Company Services'}</span>
-                <span className="text-2xl font-bold text-emerald-400">
-                  {listings.filter((l) => l.sectionType === 'company_services').length}
-                </span>
-              </div>
-            </div>
-
-            {/* Quick Management Banner */}
+            {/* Quick Actions Banner */}
             <div className="bg-gradient-to-r from-[#4d0c1f] via-slate-900 to-slate-900 p-6 rounded-2xl border border-rose-900/40 flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="space-y-1">
                 <h3 className="font-bold text-base text-white">
-                  {isAr ? 'إدارة وتعديل الإعلانات المباشر في المنصة' : 'Direct Listing Management & Live Editing'}
+                  {isAr ? 'التحكم وتصدير البيانات إلى إكسل' : 'Management & Excel Exports'}
                 </h3>
                 <p className="text-xs text-rose-200/80 max-w-xl">
                   {isAr
-                    ? 'يمكنك الانتقال إلى تبويب "إدارة الإعلانات وتعديلها" لتعديل أسعار الإعلانات، العناوين، الأرقام، وتغيير الحالات أو حذف أي إعلان فورا.'
-                    : 'Switch to the Listings tab to edit prices, phone numbers, statuses, or delete listings.'}
+                    ? 'يمكنك الانتقال لتبويب الإعلانات أو الأقسام وتصدير كامل البيانات بضغطة زر واحدة بصيغة Excel (CSV UTF-8) متوافقة 100% مع اللغة العربية.'
+                    : 'Export all listings and categories directly to Microsoft Excel with complete Arabic UTF-8 encoding.'}
                 </p>
               </div>
-              <button
-                onClick={() => setActiveTab('listings')}
-                className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all shrink-0 flex items-center gap-2"
-              >
-                <Edit size={15} />
-                <span>{isAr ? 'الانتقال لتعديل الإعلانات' : 'Go to Edit Listings'}</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => exportListingsToExcel(listings, lang)}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2"
+                >
+                  <FileSpreadsheet size={15} />
+                  <span>{isAr ? 'تصدير الإعلانات' : 'Export Listings'}</span>
+                </button>
+                <button
+                  onClick={() => exportCategoriesToExcel(categoriesList, listings, lang)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2"
+                >
+                  <FolderTree size={15} />
+                  <span>{isAr ? 'تصدير الأقسام' : 'Export Categories'}</span>
+                </button>
+              </div>
             </div>
           </div>
         )}
 
-        {/* TAB 2: Listings Management with Editing Capability (Requirement 3) */}
+        {/* TAB 2: Listings Management with Editing & Excel Export */}
         {activeTab === 'listings' && (
           <div className="space-y-4">
-            {/* Filter and Search Bar */}
-            <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+            {/* Filter, Search and Export Bar */}
+            <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 flex flex-col lg:flex-row items-center justify-between gap-3">
               <div className="relative flex-1 w-full max-w-md">
                 <input
                   type="text"
@@ -539,9 +682,21 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 </div>
               </div>
 
-              {/* Status Filter */}
-              <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto text-xs font-bold">
-                <span className="text-slate-400 text-xs shrink-0">{isAr ? 'الحالة:' : 'Status:'}</span>
+              {/* Status and Category Filter */}
+              <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto text-xs font-bold">
+                {/* Category Filter */}
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="bg-slate-800 border border-slate-700 text-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400"
+                >
+                  <option value="all">{isAr ? 'جميع الأقسام' : 'All Categories'}</option>
+                  {categoriesList.map((c) => (
+                    <option key={c.id} value={c.id}>{c.nameAr}</option>
+                  ))}
+                </select>
+
+                {/* Status Filter */}
                 {(['all', 'active', 'premium', 'pending', 'expired'] as const).map((st) => (
                   <button
                     key={st}
@@ -559,6 +714,16 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                     {st === 'expired' && (isAr ? 'منتهي' : 'Expired')}
                   </button>
                 ))}
+
+                {/* Export to Excel Button */}
+                <button
+                  onClick={() => exportListingsToExcel(filteredListings, lang)}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-95 shrink-0"
+                  title={isAr ? 'تصدير جدول الإعلانات إلى ملف إكسل' : 'Export listings to Excel'}
+                >
+                  <FileSpreadsheet size={15} />
+                  <span>{isAr ? 'تصدير إكسل' : 'Export Excel'}</span>
+                </button>
               </div>
             </div>
 
@@ -575,7 +740,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                       <th className="p-3.5 text-center">{isAr ? 'المشاهدات' : 'Views'}</th>
                       <th className="p-3.5 text-center">{isAr ? 'النقرات' : 'Clicks'}</th>
                       <th className="p-3.5 text-center">{isAr ? 'الحالة' : 'Status'}</th>
-                      <th className="p-3.5 text-center">{isAr ? 'الإجراءات' : 'Actions'}</th>
+                      <th className="p-3.5 text-center">{isAr ? 'الإجراءات السريعة' : 'Actions'}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60">
@@ -635,10 +800,12 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                           {l.clicksCount || 0}
                         </td>
 
-                        {/* Status */}
+                        {/* Status badge with quick toggle */}
                         <td className="p-3.5 text-center">
-                          <span
-                            className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                          <button
+                            onClick={() => handleToggleActive(l)}
+                            title={isAr ? 'اضغط لتبديل حالة الإعلان بين نشط ومعلق' : 'Click to toggle active/pending'}
+                            className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-transform active:scale-95 ${
                               l.status === 'premium'
                                 ? 'bg-amber-400/20 text-amber-300 border border-amber-400/30'
                                 : l.status === 'active'
@@ -650,14 +817,25 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                           >
                             {l.status === 'premium' && (isAr ? 'مميز ★' : 'Featured')}
                             {l.status === 'active' && (isAr ? 'نشط' : 'Active')}
-                            {l.status === 'pending' && (isAr ? 'قيد المراجعة' : 'Pending')}
+                            {l.status === 'pending' && (isAr ? 'معلق' : 'Pending')}
                             {l.status === 'expired' && (isAr ? 'منتهي' : 'Expired')}
-                          </span>
+                          </button>
                         </td>
 
-                        {/* Actions: Edit & Delete */}
+                        {/* Actions: Edit, Star, Delete */}
                         <td className="p-3.5 text-center">
                           <div className="flex items-center justify-center gap-1.5">
+                            {/* Toggle Featured */}
+                            <button
+                              onClick={() => handleToggleFeatured(l)}
+                              className={`p-1.5 rounded-lg transition-colors ${
+                                l.status === 'premium' ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-slate-400 hover:text-amber-300'
+                              }`}
+                              title={isAr ? 'تمييز الإعلان ★' : 'Feature Listing'}
+                            >
+                              <Star size={14} className={l.status === 'premium' ? 'fill-current' : ''} />
+                            </button>
+
                             {/* Edit Button */}
                             <button
                               onClick={() => handleOpenEdit(l)}
@@ -698,99 +876,310 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
           </div>
         )}
 
-        {/* TAB 3: Categories */}
+        {/* TAB 3: Categories & Subcategories Full Management (Hierarchical & Excel) */}
         {activeTab === 'categories' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {CATEGORIES.map((cat) => {
-              const catAdsCount = listings.filter((l) => l.categoryId === cat.id).length;
-              return (
-                <div key={cat.id} className="bg-slate-900 p-5 rounded-2xl border border-slate-800 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className="text-3xl">{cat.icon}</span>
-                      <div>
-                        <h4 className="font-bold text-white text-sm">{cat.nameAr}</h4>
-                        <span className="text-[11px] text-slate-400">
-                          {cat.subcategories.length} {isAr ? 'أقسام فرعية' : 'subcategories'}
-                        </span>
-                      </div>
-                    </div>
-                    <span className="px-2 py-1 bg-amber-400/20 text-amber-300 text-[10px] font-bold rounded-lg">
-                      {catAdsCount} {isAr ? 'إعلان' : 'ads'}
-                    </span>
-                  </div>
-
-                  <div className="flex flex-wrap gap-1.5 pt-2 border-t border-slate-800">
-                    {cat.subcategories.slice(0, 4).map((sub) => (
-                      <span key={sub.id} className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded">
-                        {sub.nameAr}
-                      </span>
-                    ))}
-                    {cat.subcategories.length > 4 && (
-                      <span className="text-[10px] text-slate-500 font-bold">
-                        +{cat.subcategories.length - 4}
-                      </span>
-                    )}
-                  </div>
+          <div className="space-y-6">
+            {/* Header with Export & Filter */}
+            <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-amber-500/20 text-amber-400 rounded-xl">
+                  <FolderTree size={20} />
                 </div>
-              );
-            })}
-          </div>
-        )}
+                <div>
+                  <h3 className="font-bold text-white text-sm">
+                    {isAr ? 'هيكلية الأقسام والقوائم الموحدة' : 'Unified Taxonomy & Category Hierarchy'}
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    {isAr ? '5 أقسام رئيسية و 87 قسماً فرعياً مع تحكم وتعديل فوري' : '5 parent categories and 87 subcategories with live editing'}
+                  </p>
+                </div>
+              </div>
 
-        {/* TAB 4: Users */}
-        {activeTab === 'users' && (
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-            <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-white text-sm">{isAr ? 'المستخدمين المعتمدين في النظام' : 'Registered Users'}</h3>
-                <p className="text-xs text-slate-400">{isAr ? 'حسابات إدارة النظام والمعلنين المعتمدين' : 'Admin and verified advertiser accounts'}</p>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                {/* Search */}
+                <div className="relative flex-1 sm:w-60">
+                  <input
+                    type="text"
+                    value={categorySearch}
+                    onChange={(e) => setCategorySearch(e.target.value)}
+                    placeholder={isAr ? 'بحث في الأقسام...' : 'Search categories...'}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 pl-8 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  />
+                  <Search size={14} className="absolute top-2.5 left-2.5 text-slate-400" />
+                </div>
+
+                {/* Export Categories to Excel Button */}
+                <button
+                  onClick={() => exportCategoriesToExcel(categoriesList, listings, lang)}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-95 shrink-0"
+                  title={isAr ? 'تصدير شجرة الأقسام والقوائم إلى ملف إكسل' : 'Export categories to Excel'}
+                >
+                  <FileSpreadsheet size={15} />
+                  <span>{isAr ? 'تصدير إكسل' : 'Export Excel'}</span>
+                </button>
               </div>
             </div>
 
-            <table className="w-full text-right text-xs">
-              <thead className="bg-slate-950 text-slate-400 font-bold border-b border-slate-800">
-                <tr>
-                  <th className="p-3.5">{isAr ? 'المستخدم' : 'User'}</th>
-                  <th className="p-3.5">{isAr ? 'رقم الهاتف' : 'Phone'}</th>
-                  <th className="p-3.5">{isAr ? 'نوع الحساب' : 'Type'}</th>
-                  <th className="p-3.5">{isAr ? 'الصلاحية' : 'Role'}</th>
-                  <th className="p-3.5 text-center">{isAr ? 'حالة التوثيق' : 'Verification'}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                <tr className="bg-amber-500/5">
-                  <td className="p-3.5 font-bold text-white flex items-center gap-2">
-                    <Shield size={14} className="text-amber-400" />
-                    <span>إدارة عون يمن (Admin)</span>
-                  </td>
-                  <td className="p-3.5 text-slate-300 font-mono">+967 770 000 001</td>
-                  <td className="p-3.5 text-slate-300">{isAr ? 'منشأة / شركة' : 'Company'}</td>
-                  <td className="p-3.5">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-400/20 text-amber-300">Super Admin</span>
-                  </td>
-                  <td className="p-3.5 text-center text-emerald-400 font-bold">✓ {isAr ? 'موثق' : 'Verified'}</td>
-                </tr>
-                <tr>
-                  <td className="p-3.5 font-semibold text-white">حمزة الشيف اليمني</td>
-                  <td className="p-3.5 text-slate-300 font-mono">+967 777 123 456</td>
-                  <td className="p-3.5 text-slate-300">{isAr ? 'حساب شخصي' : 'Personal'}</td>
-                  <td className="p-3.5">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300">{isAr ? 'معلن' : 'Advertiser'}</span>
-                  </td>
-                  <td className="p-3.5 text-center text-emerald-400 font-bold">✓ {isAr ? 'موثق (+967)' : 'Verified'}</td>
-                </tr>
-                <tr>
-                  <td className="p-3.5 font-semibold text-white">مطاعم الروابي السياحية</td>
-                  <td className="p-3.5 text-slate-300 font-mono">+967 771 888 999</td>
-                  <td className="p-3.5 text-slate-300">{isAr ? 'شركة ومؤسسة' : 'Company'}</td>
-                  <td className="p-3.5">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300">{isAr ? 'صاحب عمل' : 'Employer'}</span>
-                  </td>
-                  <td className="p-3.5 text-center text-emerald-400 font-bold">✓ {isAr ? 'موثق' : 'Verified'}</td>
-                </tr>
-              </tbody>
-            </table>
+            {/* Parent Categories Filter Tabs */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs font-bold">
+              <button
+                onClick={() => setSelectedParentCatId('all')}
+                className={`px-3 py-1.5 rounded-lg transition-colors shrink-0 ${
+                  selectedParentCatId === 'all'
+                    ? 'bg-amber-500 text-slate-950 font-black'
+                    : 'bg-slate-900 text-slate-300 hover:bg-slate-800'
+                }`}
+              >
+                {isAr ? 'جميع الأقسام الرئيسية (5)' : 'All Parents (5)'}
+              </button>
+              {categoriesList.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setSelectedParentCatId(c.id)}
+                  className={`px-3 py-1.5 rounded-lg transition-colors shrink-0 flex items-center gap-1.5 ${
+                    selectedParentCatId === c.id
+                      ? 'bg-amber-500 text-slate-950 font-black'
+                      : 'bg-slate-900 text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  <span>{c.nameAr}</span>
+                  <span className="text-[10px] opacity-75 font-mono">({c.subcategories.length})</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Hierarchical Categories View */}
+            <div className="space-y-6">
+              {filteredCategories.map((cat) => {
+                const catAdsCount = listings.filter((l) => l.categoryId === cat.id).length;
+                return (
+                  <div key={cat.id} className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden shadow-sm">
+                    {/* Parent Header */}
+                    <div className="bg-slate-950 p-4 border-b border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white shadow-sm"
+                          style={{ backgroundColor: cat.color }}
+                        >
+                          <Tag size={18} />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-black text-white text-sm sm:text-base">{cat.nameAr}</h4>
+                            <span className="text-xs text-slate-400 font-semibold font-sans">({cat.nameEn})</span>
+                          </div>
+                          <span className="text-[11px] text-slate-400">
+                            {cat.subcategories.length} {isAr ? 'أقسام فرعية' : 'subcategories'} • {catAdsCount} {isAr ? 'إعلانات مرتبطة' : 'linked ads'} • Slug: <code className="text-amber-300">{cat.slug}</code>
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {/* Edit Parent Category */}
+                        <button
+                          onClick={() => setEditingCategory(cat)}
+                          className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5"
+                        >
+                          <Edit size={13} />
+                          <span>{isAr ? 'تعديل القسم الرئيسي' : 'Edit Parent'}</span>
+                        </button>
+
+                        {/* Add New Subcategory to this Parent */}
+                        <button
+                          onClick={() => {
+                            setNewSubParentId(cat.id);
+                            setNewSubNameAr('');
+                            setNewSubNameEn('');
+                            setNewSubSlug('');
+                          }}
+                          className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black rounded-lg transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
+                        >
+                          <Plus size={14} />
+                          <span>{isAr ? 'إضافة قسم فرعي' : 'Add Subcategory'}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Subcategories Table */}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-right text-xs">
+                        <thead className="bg-slate-900/60 text-slate-400 font-bold border-b border-slate-800/80">
+                          <tr>
+                            <th className="p-3">{isAr ? 'القسم الفرعي' : 'SubCategory'}</th>
+                            <th className="p-3">{isAr ? 'الاسم بالإنجليزية' : 'English Name'}</th>
+                            <th className="p-3">{isAr ? 'الرمز (Slug)' : 'Slug'}</th>
+                            <th className="p-3 text-center">{isAr ? 'الإعلانات المرتبطة' : 'Linked Ads'}</th>
+                            <th className="p-3">{isAr ? 'الحقول المخصصة' : 'Dynamic Fields'}</th>
+                            <th className="p-3 text-center">{isAr ? 'الإجراءات' : 'Actions'}</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800/50">
+                          {cat.subcategories.map((sub) => {
+                            const subAdsCount = listings.filter((l) => l.subCategoryId === sub.id).length;
+                            return (
+                              <tr key={sub.id} className="hover:bg-slate-800/30 transition-colors">
+                                <td className="p-3 font-bold text-white flex items-center gap-2">
+                                  <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                                  <span>{sub.nameAr}</span>
+                                </td>
+                                <td className="p-3 text-slate-300 font-sans">{sub.nameEn}</td>
+                                <td className="p-3 font-mono text-[11px] text-amber-300">{sub.slug}</td>
+                                <td className="p-3 text-center font-bold text-emerald-400">
+                                  {subAdsCount}
+                                </td>
+                                <td className="p-3 text-slate-400 text-[11px]">
+                                  {sub.fields && sub.fields.length > 0 ? (
+                                    <span className="bg-slate-800 text-slate-300 px-2 py-0.5 rounded text-[10px]">
+                                      {sub.fields.map((f) => f.labelAr).join(', ')}
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-600">{isAr ? 'حقول قياسية' : 'Standard'}</span>
+                                  )}
+                                </td>
+                                <td className="p-3 text-center">
+                                  <button
+                                    onClick={() => setEditingSubCategory({ parentId: cat.id, sub })}
+                                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 transition-colors"
+                                    title={isAr ? 'تعديل القسم الفرعي' : 'Edit subcategory'}
+                                  >
+                                    <Edit size={13} />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: Users & Admin Password Security */}
+        {activeTab === 'users' && (
+          <div className="space-y-6">
+            {/* Admin Password Management Card */}
+            <div className="bg-gradient-to-br from-slate-900 to-slate-900 p-6 rounded-2xl border border-amber-500/30 shadow-md space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-500 text-slate-950 rounded-xl">
+                  <KeyRound size={20} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-base">
+                    {isAr ? 'إدارة كلمة مرور المشرف (Admin Password)' : 'Admin Password Security'}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {isAr
+                      ? 'يمكنك تحديث كلمة مرور حساب الإدارة لحماية لوحة التحكم في الموقع المرفوع'
+                      : 'Update the master admin password to secure your live production website'}
+                  </p>
+                </div>
+              </div>
+
+              {passwordMsg && (
+                <div
+                  className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${
+                    passwordMsg.type === 'success'
+                      ? 'bg-emerald-950/60 border border-emerald-700 text-emerald-300'
+                      : 'bg-rose-950/60 border border-rose-800 text-rose-300'
+                  }`}
+                >
+                  {passwordMsg.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+                  <span>{passwordMsg.text}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleChangePassword} className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-bold">
+                <div>
+                  <label className="text-slate-300 block mb-1">{isAr ? 'كلمة المرور الجديدة' : 'New Password'}</label>
+                  <input
+                    type="password"
+                    required
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  />
+                </div>
+                <div>
+                  <label className="text-slate-300 block mb-1">{isAr ? 'تأكيد كلمة المرور' : 'Confirm Password'}</label>
+                  <input
+                    type="password"
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 px-4 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    <Save size={15} />
+                    <span>{isAr ? 'حفظ كلمة المرور الجديدة' : 'Update Password'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Users Table */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+              <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-white text-sm">{isAr ? 'المستخدمين المعتمدين في النظام' : 'Registered Users'}</h3>
+                  <p className="text-xs text-slate-400">{isAr ? 'حسابات إدارة النظام والمعلنين المعتمدين' : 'Admin and verified advertiser accounts'}</p>
+                </div>
+              </div>
+
+              <table className="w-full text-right text-xs">
+                <thead className="bg-slate-950 text-slate-400 font-bold border-b border-slate-800">
+                  <tr>
+                    <th className="p-3.5">{isAr ? 'المستخدم' : 'User'}</th>
+                    <th className="p-3.5">{isAr ? 'رقم الهاتف' : 'Phone'}</th>
+                    <th className="p-3.5">{isAr ? 'نوع الحساب' : 'Type'}</th>
+                    <th className="p-3.5">{isAr ? 'الصلاحية' : 'Role'}</th>
+                    <th className="p-3.5 text-center">{isAr ? 'حالة التوثيق' : 'Verification'}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  <tr className="bg-amber-500/5">
+                    <td className="p-3.5 font-bold text-white flex items-center gap-2">
+                      <Shield size={14} className="text-amber-400" />
+                      <span>إدارة عون يمن (Admin)</span>
+                    </td>
+                    <td className="p-3.5 text-slate-300 font-mono">+967 770 000 001</td>
+                    <td className="p-3.5 text-slate-300">{isAr ? 'منشأة / شركة' : 'Company'}</td>
+                    <td className="p-3.5">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-400/20 text-amber-300">Super Admin</span>
+                    </td>
+                    <td className="p-3.5 text-center text-emerald-400 font-bold">✓ {isAr ? 'موثق' : 'Verified'}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3.5 font-semibold text-white">حمزة الشيف اليمني</td>
+                    <td className="p-3.5 text-slate-300 font-mono">+967 777 123 456</td>
+                    <td className="p-3.5 text-slate-300">{isAr ? 'حساب شخصي' : 'Personal'}</td>
+                    <td className="p-3.5">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300">{isAr ? 'معلن' : 'Advertiser'}</span>
+                    </td>
+                    <td className="p-3.5 text-center text-emerald-400 font-bold">✓ {isAr ? 'موثق (+967)' : 'Verified'}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3.5 font-semibold text-white">مطاعم الروابي السياحية</td>
+                    <td className="p-3.5 text-slate-300 font-mono">+967 771 888 999</td>
+                    <td className="p-3.5 text-slate-300">{isAr ? 'شركة ومؤسسة' : 'Company'}</td>
+                    <td className="p-3.5">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300">{isAr ? 'صاحب عمل' : 'Employer'}</span>
+                    </td>
+                    <td className="p-3.5 text-center text-emerald-400 font-bold">✓ {isAr ? 'موثق' : 'Verified'}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
@@ -982,6 +1371,244 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 >
                   <Save size={16} />
                   <span>{isAr ? 'حفظ وتحديث الإعلان' : 'Save Changes'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT PARENT CATEGORY MODAL */}
+      {editingCategory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-700 text-slate-100 rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-4 text-xs font-bold">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h3 className="font-bold text-white text-base">
+                {isAr ? 'تعديل بيانات القسم الرئيسي' : 'Edit Parent Category'}
+              </h3>
+              <button onClick={() => setEditingCategory(null)} className="text-slate-400 hover:text-white">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCategoryEdits} className="space-y-4">
+              <div>
+                <label className="text-slate-300 block mb-1">{isAr ? 'الاسم بالعربي' : 'Name (Arabic)'}</label>
+                <input
+                  type="text"
+                  required
+                  value={editingCategory.nameAr}
+                  onChange={(e) => setEditingCategory({ ...editingCategory, nameAr: e.target.value })}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 block mb-1">{isAr ? 'الاسم بالإنجليزي' : 'Name (English)'}</label>
+                <input
+                  type="text"
+                  required
+                  value={editingCategory.nameEn}
+                  onChange={(e) => setEditingCategory({ ...editingCategory, nameEn: e.target.value })}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 block mb-1">{isAr ? 'لون التمييز (Hex Color)' : 'Accent Color'}</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={editingCategory.color}
+                    onChange={(e) => setEditingCategory({ ...editingCategory, color: e.target.value })}
+                    className="w-10 h-10 rounded-lg cursor-pointer bg-transparent border-0"
+                  />
+                  <input
+                    type="text"
+                    value={editingCategory.color}
+                    onChange={(e) => setEditingCategory({ ...editingCategory, color: e.target.value })}
+                    className="flex-1 bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingCategory(null)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl"
+                >
+                  {isAr ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl shadow-md"
+                >
+                  {isAr ? 'حفظ القسم' : 'Save Category'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT SUBCATEGORY MODAL */}
+      {editingSubCategory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-700 text-slate-100 rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-4 text-xs font-bold">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h3 className="font-bold text-white text-base">
+                {isAr ? 'تعديل بيانات القسم الفرعي' : 'Edit Subcategory'}
+              </h3>
+              <button onClick={() => setEditingSubCategory(null)} className="text-slate-400 hover:text-white">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveSubCategoryEdits} className="space-y-4">
+              <div>
+                <label className="text-slate-300 block mb-1">{isAr ? 'الاسم بالعربي' : 'Name (Arabic)'}</label>
+                <input
+                  type="text"
+                  required
+                  value={editingSubCategory.sub.nameAr}
+                  onChange={(e) =>
+                    setEditingSubCategory({
+                      ...editingSubCategory,
+                      sub: { ...editingSubCategory.sub, nameAr: e.target.value },
+                    })
+                  }
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 block mb-1">{isAr ? 'الاسم بالإنجليزي' : 'Name (English)'}</label>
+                <input
+                  type="text"
+                  required
+                  value={editingSubCategory.sub.nameEn}
+                  onChange={(e) =>
+                    setEditingSubCategory({
+                      ...editingSubCategory,
+                      sub: { ...editingSubCategory.sub, nameEn: e.target.value },
+                    })
+                  }
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 block mb-1">{isAr ? 'الرمز (Slug)' : 'Slug'}</label>
+                <input
+                  type="text"
+                  required
+                  value={editingSubCategory.sub.slug}
+                  onChange={(e) =>
+                    setEditingSubCategory({
+                      ...editingSubCategory,
+                      sub: { ...editingSubCategory.sub, slug: e.target.value },
+                    })
+                  }
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white font-mono"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingSubCategory(null)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl"
+                >
+                  {isAr ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl shadow-md"
+                >
+                  {isAr ? 'حفظ القسم الفرعي' : 'Save Subcategory'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ADD NEW SUBCATEGORY MODAL */}
+      {newSubParentId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-700 text-slate-100 rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-4 text-xs font-bold">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h3 className="font-bold text-white text-base">
+                {isAr ? 'إضافة قسم فرعي جديد' : 'Add New Subcategory'}
+              </h3>
+              <button onClick={() => setNewSubParentId(null)} className="text-slate-400 hover:text-white">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddNewSubCategory} className="space-y-4">
+              <div>
+                <label className="text-slate-300 block mb-1">{isAr ? 'القسم الأب (Parent Category)' : 'Parent'}</label>
+                <select
+                  value={newSubParentId}
+                  onChange={(e) => setNewSubParentId(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                >
+                  {categoriesList.map((c) => (
+                    <option key={c.id} value={c.id}>{c.nameAr} ({c.nameEn})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-slate-300 block mb-1">{isAr ? 'اسم القسم الفرعي بالعربي *' : 'Name (Arabic) *'}</label>
+                <input
+                  type="text"
+                  required
+                  value={newSubNameAr}
+                  onChange={(e) => setNewSubNameAr(e.target.value)}
+                  placeholder="مثال: عقارات تجارية ومحلات"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 block mb-1">{isAr ? 'اسم القسم الفرعي بالإنجليزي' : 'Name (English)'}</label>
+                <input
+                  type="text"
+                  value={newSubNameEn}
+                  onChange={(e) => setNewSubNameEn(e.target.value)}
+                  placeholder="e.g. Commercial Real Estate"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 block mb-1">{isAr ? 'الرمز (Slug) - اختياري' : 'Slug'}</label>
+                <input
+                  type="text"
+                  value={newSubSlug}
+                  onChange={(e) => setNewSubSlug(e.target.value)}
+                  placeholder="e.g. commercial-shops"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white font-mono"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setNewSubParentId(null)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl"
+                >
+                  {isAr ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl shadow-md active:scale-95 flex items-center gap-1.5"
+                >
+                  <Plus size={15} />
+                  <span>{isAr ? 'إضافة وتثبيت' : 'Add Subcategory'}</span>
                 </button>
               </div>
             </form>

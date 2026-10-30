@@ -42,3 +42,18 @@ export const DEMO_USERS: Record<string, AuthUser> = {
     walletBalanceUsd: 1200,
   },
 };
+
+export const DEFAULT_ADMIN_PASSWORD = 'AwnAdmin@2026!Yemen';
+
+export const getAdminPassword = (): string => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('awn_admin_password') || DEFAULT_ADMIN_PASSWORD;
+  }
+  return DEFAULT_ADMIN_PASSWORD;
+};
+
+export const setAdminPassword = (newPass: string): void => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('awn_admin_password', newPass);
+  }
+};

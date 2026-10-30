@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Lock, Phone, Mail, Shield, UserPlus, LogIn, CheckCircle2, AlertCircle, Sparkles, Building, UserCheck } from 'lucide-react';
-import { AuthUser, DEMO_USERS, AccountType } from '../types/auth';
+import { AuthUser, DEMO_USERS, AccountType, getAdminPassword } from '../types/auth';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -38,13 +38,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setTimeout(() => {
       setLoading(false);
       if (isAdminMode) {
-        // Admin credentials verification
-        if (identifier.toLowerCase().includes('admin') || password === 'admin' || password === 'admin123' || identifier === '') {
+        // Real Admin verification (Demo removed)
+        const cleanIdentifier = identifier.trim().toLowerCase();
+        const cleanPassword = password.trim();
+        const expectedPass = getAdminPassword();
+        const validAdminUsers = ['admin', 'admin@awnyemen.com', '770000001', '+967770000001', '777000000', '+967777000000'];
+
+        if ((validAdminUsers.includes(cleanIdentifier) || cleanIdentifier === '') && cleanPassword === expectedPass) {
           onLoginSuccess(DEMO_USERS.admin);
           onClose();
           return;
         } else {
-          setError(isAr ? 'بيانات دخول المسؤول غير صحيحة (يمكنك استخدام زر الدخول السريع أدناه)' : 'Invalid Admin credentials');
+          setError(isAr ? 'اسم المستخدم أو كلمة المرور الخاصة بالمسؤول غير صحيحة!' : 'Invalid Admin username or password');
           return;
         }
       }
@@ -90,10 +95,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     onClose();
   };
 
-  const handleQuickDemoAdmin = () => {
-    onLoginSuccess(DEMO_USERS.admin);
-    onClose();
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-xs p-4 animate-in fade-in duration-200">
@@ -268,40 +269,37 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </form>
 
         {/* Quick Demo Logins Section */}
-        <div className="bg-slate-50 p-4 border-t border-slate-200">
-          <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 text-center">
-            {isAr ? 'الدخول السريع التجريبي (1-Click Demo Login)' : 'Quick 1-Click Demo Login'}
+        {isAdminMode ? (
+          <div className="bg-slate-900 text-slate-300 p-3.5 border-t border-slate-800 flex items-center gap-2.5 text-xs">
+            <div className="p-1.5 bg-amber-400 text-slate-950 rounded-md shrink-0">
+              <Shield size={16} />
+            </div>
+            <span className="font-semibold text-slate-300 text-[11px] leading-relaxed">
+              {isAr
+                ? 'بوابة الإدارة محمية بكلمة مرور رسمية مشفرة، تم إلغاء الدخول التجريبي التلقائي حفاظاً على أمان المنصة.'
+                : 'Admin portal is secured with production credentials. 1-Click bypass is disabled.'}
+            </span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        ) : (
+          <div className="bg-slate-50 p-4 border-t border-slate-200">
+            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 text-center">
+              {isAr ? 'الدخول السريع التجريبي للمستخدمين' : 'Quick Demo User Login'}
+            </div>
             <button
               type="button"
               onClick={handleQuickDemoUser}
-              className="p-2 bg-white hover:bg-amber-50 border border-slate-200 hover:border-amber-400 rounded-lg text-xs font-bold text-slate-800 flex items-center gap-2 transition-all shadow-2xs"
+              className="w-full p-2 bg-white hover:bg-amber-50 border border-slate-200 hover:border-amber-400 rounded-lg text-xs font-bold text-slate-800 flex items-center justify-center gap-2 transition-all shadow-2xs"
             >
               <div className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-900 flex items-center justify-center shrink-0">
                 <UserCheck size={14} />
               </div>
-              <div className="text-right flex-1 truncate">
-                <span className="block text-[11px] text-amber-900 font-bold truncate">حمزة الشيف</span>
+              <div className="text-right">
+                <span className="block text-[11px] text-amber-900 font-bold truncate">حمزة الشيف (مستخدم تجريبي)</span>
                 <span className="block text-[9px] text-slate-500">{isAr ? 'معلن / باحث عن عمل' : 'Demo User'}</span>
               </div>
             </button>
-
-            <button
-              type="button"
-              onClick={handleQuickDemoAdmin}
-              className="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-900 rounded-lg text-xs font-bold text-white flex items-center gap-2 transition-all shadow-2xs"
-            >
-              <div className="w-6 h-6 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center shrink-0">
-                <Shield size={14} />
-              </div>
-              <div className="text-right flex-1 truncate">
-                <span className="block text-[11px] text-amber-300 font-bold truncate">{isAr ? 'مسؤول النظام' : 'System Admin'}</span>
-                <span className="block text-[9px] text-slate-300">{isAr ? 'لوحة التحكم الكاملة' : 'Full Control Panel'}</span>
-              </div>
-            </button>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
