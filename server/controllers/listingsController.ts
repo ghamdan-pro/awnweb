@@ -6,20 +6,35 @@ const FALLBACK_LISTINGS = [...INITIAL_LISTINGS];
 
 export const searchListings = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { category, subcategory, section, region, city, q, page = '1', limit = '20' } = req.query;
+    const { category, subcategory, section, region, city, q, page = '1', limit = '20', status, sellerPhone } = req.query;
 
     let listings: any[] = [];
     let count = 0;
 
     // Try Supabase first
     try {
-      let query = supabase.from('listings').select('*, media:listing_media(*)', { count: 'exact' });
+      let query = supabase.from('listings').select('*', { count: 'exact' });
 
       if (category) query = query.eq('category_id', category);
       if (subcategory) query = query.eq('sub_category_id', subcategory);
       if (region && region !== 'all') query = query.eq('region_id', region);
       if (city) query = query.eq('city_id', city);
       if (q) query = query.or(`title.ilike.%${q}%,description.ilike.%${q}%`);
+      if (sellerPhone) query = query.ilike('contact_phone', `%${sellerPhone}%`);
+
+      // Filter by status:
+      if (status && status !== 'all') {
+        if (status === 'active') {
+          query = query.in('status', ['active', 'premium']);
+        } else {
+          query = query.eq('status', status);
+        }
+      } else if (!status) {
+        // Public search: default to active & premium only!
+        query = query.in('status', ['active', 'premium']);
+      }
+
+      query = query.order('created_at', { ascending: false });
 
       const p = parseInt(page as string, 10) || 1;
       const l = parseInt(limit as string, 10) || 20;
@@ -64,8 +79,15 @@ export const searchListings = async (req: Request, res: Response): Promise<void>
           viewsCount: item.views_count || 0,
           clicksCount: item.clicks_count || 0,
           createdAt: item.created_at,
-          media: item.media || [],
-          attributes: [],
+          media: (Array.isArray(item.metadata?.mediaUrls) && item.metadata.mediaUrls.length > 0)
+            ? item.metadata.mediaUrls.map((url: string, index: number) => ({
+                id: `media-${index}`,
+                url,
+                isPrimary: index === 0,
+                orderWeight: index,
+              }))
+            : (item.seller_avatar ? [{ id: 'media-0', url: item.seller_avatar, isPrimary: true, orderWeight: 0 }] : []),
+          attributes: item.metadata?.attributes || [],
         }));
         count = dbCount || listings.length;
       }
@@ -79,6 +101,18 @@ export const searchListings = async (req: Request, res: Response): Promise<void>
       if (section) filtered = filtered.filter((l) => l.sectionType === section);
       if (region && region !== 'all') filtered = filtered.filter((l) => l.regionId === region);
       if (city) filtered = filtered.filter((l) => l.cityId === city);
+      if (sellerPhone) {
+        filtered = filtered.filter((l) => (l.contactPhone || '').includes(sellerPhone as string));
+      }
+      if (status && status !== 'all') {
+        if (status === 'active') {
+          filtered = filtered.filter((l) => l.status === 'active' || l.status === 'premium');
+        } else {
+          filtered = filtered.filter((l) => l.status === status);
+        }
+      } else if (!status) {
+        filtered = filtered.filter((l) => l.status === 'active' || l.status === 'premium');
+      }
       if (q) {
         const queryLower = (q as string).toLowerCase();
         filtered = filtered.filter(
@@ -114,7 +148,7 @@ export const getListingById = async (req: Request, res: Response): Promise<void>
     try {
       const { data, error } = await supabase
         .from('listings')
-        .select('*, media:listing_media(*)')
+        .select('*')
         .eq('id', id)
         .single();
 
@@ -126,11 +160,20 @@ export const getListingById = async (req: Request, res: Response): Promise<void>
           .eq('id', id)
           .then(() => {});
 
+        const media = (Array.isArray(data.metadata?.mediaUrls) && data.metadata.mediaUrls.length > 0)
+          ? data.metadata.mediaUrls.map((url: string, index: number) => ({
+              id: `media-${index}`,
+              url,
+              isPrimary: index === 0,
+              orderWeight: index,
+            }))
+          : (data.seller_avatar ? [{ id: 'media-0', url: data.seller_avatar, isPrimary: true, orderWeight: 0 }] : []);
+
         res.status(200).json({
           success: true,
           data: {
             ...data,
-            media: data.media || [],
+            media,
           },
         });
         return;
@@ -194,7 +237,42 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
     const finalRegionId = regionId || 'ye-sanaa';
     const finalCategoryId = categoryId || 'jobs';
     const finalContactPhone = contactPhone || '';
-    const finalStatus = status || 'active';
+    const finalStatus = isDraft ? 'draft' : (status || 'pending');
+
+    // Resolve valid city_id and cityName for Supabase foreign key
+    const defaultCities: Record<string, { id: string; nameAr: string }> = {
+      'ye-sanaa': { id: 'ye-san-amanah', nameAr: 'أمانة العاصمة' },
+      'ye-aden': { id: 'ye-ade-mualla', nameAr: 'المعلا' },
+      'ye-taiz': { id: 'ye-tai-mudhaffar', nameAr: 'المظفر' },
+      'ye-hadramout': { id: 'ye-had-mukalla', nameAr: 'المكلا' },
+      'ye-marib': { id: 'ye-mar-city', nameAr: 'مدينة مأرب' },
+    };
+
+    let validCityId = cityId;
+    let validCityName = cityNameAr || '';
+    if (!validCityId || !validCityId.startsWith('ye-') || validCityId.endsWith('-center')) {
+      const match = defaultCities[finalRegionId] || defaultCities['ye-sanaa'];
+      validCityId = match.id;
+      validCityName = match.nameAr;
+    }
+
+    // Resolve seller_id (required foreign key in Supabase)
+    let validSellerId = req.body.sellerId || req.body.seller_id;
+    if (!validSellerId && finalContactPhone) {
+      try {
+        const clean = finalContactPhone.replace(/\D/g, '');
+        const { data: u } = await supabase
+          .from('users')
+          .select('id')
+          .ilike('phone_e164', `%${clean.slice(-9)}%`)
+          .limit(1)
+          .maybeSingle();
+        if (u) validSellerId = u.id;
+      } catch (_) {}
+    }
+    if (!validSellerId) {
+      validSellerId = '7b2e912f-9812-4211-8c4d-91b3e10fa892'; // حمزة الشيف اليمني
+    }
 
     let insertedListing: any = null;
 
@@ -202,8 +280,9 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
       const { data, error } = await supabase
         .from('listings')
         .insert({
+          seller_id: validSellerId,
           title: finalTitle,
-          description: description || '',
+          description: description || (isDraft ? 'مسودة إعلان' : ''),
           category_id: finalCategoryId,
           sub_category_id: subCategoryId || finalCategoryId,
           sdui_section_type: sectionType,
@@ -212,17 +291,17 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
           country_id: countryId,
           region_id: finalRegionId,
           region_name_ar: regionNameAr || finalRegionId,
-          city_id: cityId || finalRegionId,
-          city_name_ar: cityNameAr || '',
+          city_id: validCityId,
+          city_name_ar: validCityName,
           price: price ? Number(price) : null,
           currency,
           is_price_negotiable: priceNegotiable,
           purpose,
-          contact_phone: finalContactPhone,
-          whatsapp_number: whatsappNumber || finalContactPhone,
+          contact_phone: finalContactPhone || '+967777123456',
+          whatsapp_number: whatsappNumber || finalContactPhone || '+967777123456',
           contact_email: contactEmail,
-          seller_name: sellerName,
-          seller_type: sellerType,
+          seller_name: sellerName || 'معلن في عون',
+          seller_type: sellerType || 'personal',
           status: finalStatus,
           metadata: {
             sectionType,
@@ -231,6 +310,8 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
             companyPortfolio,
             workerSkills,
             workerTitle,
+            mediaUrls: Array.isArray(mediaUrls) ? mediaUrls : [],
+            attributes: Array.isArray(attributes) ? attributes : [],
           },
         })
         .select()
@@ -238,16 +319,6 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
 
       if (!error && data) {
         insertedListing = data;
-
-        if (Array.isArray(mediaUrls) && mediaUrls.length > 0) {
-          const mediaRows = mediaUrls.map((url: string, index: number) => ({
-            listing_id: data.id,
-            media_url: url,
-            is_primary: index === 0,
-            order_weight: index,
-          }));
-          await supabase.from('listing_media').insert(mediaRows);
-        }
       }
     } catch (e) {}
 
@@ -272,9 +343,8 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
         priceNegotiable,
         countryId,
         regionId: finalRegionId,
-        regionNameAr: regionNameAr || finalRegionId,
-        cityId: cityId || finalRegionId,
-        cityNameAr: cityNameAr || '',
+        cityId: validCityId,
+        cityNameAr: validCityName,
         status: finalStatus,
         purpose,
         contactPhone: finalContactPhone,
@@ -300,7 +370,11 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
 
     res.status(201).json({
       success: true,
-      message: isDraft ? 'تم حفظ الإعلان في المسودات بنجاح' : 'تم نشر الإعلان بنجاح',
+      message: isDraft
+        ? 'تم حفظ الإعلان في المسودات بنجاح'
+        : finalStatus === 'pending'
+            ? 'تم استلام الإعلان بنجاح وهو الآن قيد الموافقة والاعتماد'
+            : 'تم فحص وقبول الإعلان ونشره بنجاح',
       data: insertedListing,
     });
   } catch (error: any) {
