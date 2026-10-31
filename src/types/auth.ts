@@ -13,6 +13,7 @@ export interface AuthUser {
   walletBalanceYer: number;
   walletBalanceUsd: number;
   avatarUrl?: string;
+  bio?: string;
   createdAt?: string;
 }
 

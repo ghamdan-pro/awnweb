@@ -180,12 +180,21 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
       workerTitle,
       mediaUrls = [],
       attributes = [],
+      status = 'active',
     } = req.body;
 
-    if (!title || !contactPhone || !categoryId || !regionId) {
+    const isDraft = status === 'draft';
+
+    if (!isDraft && (!title || !contactPhone || !categoryId || !regionId)) {
       res.status(400).json({ success: false, message: 'العنوان ورقم الاتصال والقسم والمحافظة حقول مطلوبة' });
       return;
     }
+
+    const finalTitle = title || (isDraft ? 'مسودة إعلان بدون عنوان' : '');
+    const finalRegionId = regionId || 'ye-sanaa';
+    const finalCategoryId = categoryId || 'jobs';
+    const finalContactPhone = contactPhone || '';
+    const finalStatus = status || 'active';
 
     let insertedListing: any = null;
 
@@ -193,28 +202,28 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
       const { data, error } = await supabase
         .from('listings')
         .insert({
-          title,
+          title: finalTitle,
           description: description || '',
-          category_id: categoryId,
-          sub_category_id: subCategoryId || categoryId,
+          category_id: finalCategoryId,
+          sub_category_id: subCategoryId || finalCategoryId,
           sdui_section_type: sectionType,
           company_cr_number: companyCrNumber,
           service_capabilities: companyServicesList,
           country_id: countryId,
-          region_id: regionId,
-          region_name_ar: regionNameAr || regionId,
-          city_id: cityId || regionId,
+          region_id: finalRegionId,
+          region_name_ar: regionNameAr || finalRegionId,
+          city_id: cityId || finalRegionId,
           city_name_ar: cityNameAr || '',
           price: price ? Number(price) : null,
           currency,
           is_price_negotiable: priceNegotiable,
           purpose,
-          contact_phone: contactPhone,
-          whatsapp_number: whatsappNumber || contactPhone,
+          contact_phone: finalContactPhone,
+          whatsapp_number: whatsappNumber || finalContactPhone,
           contact_email: contactEmail,
           seller_name: sellerName,
           seller_type: sellerType,
-          status: 'active',
+          status: finalStatus,
           metadata: {
             sectionType,
             companyCrNumber,
@@ -245,13 +254,13 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
     // In case DB failed or not ready
     if (!insertedListing) {
       insertedListing = {
-        id: 'user-ad-' + Date.now(),
-        title,
-        description,
-        categoryId,
-        categoryNameAr: categoryId,
-        subCategoryId: subCategoryId || categoryId,
-        subCategoryNameAr: subCategoryId || categoryId,
+        id: (isDraft ? 'draft-' : 'user-ad-') + Date.now(),
+        title: finalTitle,
+        description: description || '',
+        categoryId: finalCategoryId,
+        categoryNameAr: finalCategoryId,
+        subCategoryId: subCategoryId || finalCategoryId,
+        subCategoryNameAr: subCategoryId || finalCategoryId,
         sectionType,
         companyCrNumber,
         companyServicesList,
@@ -262,14 +271,14 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
         currency,
         priceNegotiable,
         countryId,
-        regionId,
-        regionNameAr: regionNameAr || regionId,
-        cityId: cityId || regionId,
+        regionId: finalRegionId,
+        regionNameAr: regionNameAr || finalRegionId,
+        cityId: cityId || finalRegionId,
         cityNameAr: cityNameAr || '',
-        status: 'active',
+        status: finalStatus,
         purpose,
-        contactPhone,
-        whatsappNumber: whatsappNumber || contactPhone,
+        contactPhone: finalContactPhone,
+        whatsappNumber: whatsappNumber || finalContactPhone,
         contactEmail,
         sellerName,
         sellerType,
@@ -291,7 +300,7 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
 
     res.status(201).json({
       success: true,
-      message: 'تم نشر الإعلان بنجاح',
+      message: isDraft ? 'تم حفظ الإعلان في المسودات بنجاح' : 'تم نشر الإعلان بنجاح',
       data: insertedListing,
     });
   } catch (error: any) {

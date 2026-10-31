@@ -85,7 +85,8 @@ export function moderateAdContent(
 
   if (cleanPhone && existingListings.length > 0) {
     const duplicate = existingListings.find((item) => {
-      if (item.status === 'expired' || item.status === 'rejected') return false;
+      const st = item.status as string;
+      if (st === 'expired' || st === 'rejected') return false;
       const itemPhone = item.contactPhone.replace(/\D/g, '').slice(-9);
       if (itemPhone === cleanPhone) {
         const itemTitleNorm = normalizeArabic(item.title);

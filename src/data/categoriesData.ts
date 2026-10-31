@@ -6,6 +6,8 @@ export interface SubCategory {
   icon?: string;
   slug: string;
   serviceType?: 'individual' | 'company'; // خدمات أفراد vs خدمات شركات
+  is_active?: boolean;
+  order_weight?: number;
   fields?: {
     key: string;
     labelAr: string;
@@ -24,6 +26,8 @@ export interface Category {
   icon: string;
   slug: string;
   color: string;
+  is_active?: boolean;
+  order_weight?: number;
   subcategories: SubCategory[];
 }
 
