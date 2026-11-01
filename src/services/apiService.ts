@@ -335,5 +335,22 @@ export const apiService = {
     }
     return false;
   },
+
+  // 10. Dynamic Categories from API / Supabase
+  async getCategories(forceRefresh: boolean = false): Promise<Category[]> {
+    try {
+      const url = `${API_BASE_URL}/categories${forceRefresh ? '?t=' + Date.now() : ''}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data && Array.isArray(json.data) && json.data.length > 0) {
+          return json.data;
+        }
+      }
+    } catch (e) {
+      console.warn('apiService getCategories failed, using fallback:', e);
+    }
+    return CATEGORIES;
+  },
 };
 

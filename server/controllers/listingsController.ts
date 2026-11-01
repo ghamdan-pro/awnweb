@@ -58,7 +58,9 @@ export const searchListings = async (req: Request, res: Response): Promise<void>
       const from = (p - 1) * l;
       const to = from + l - 1;
 
-      const { data, count: dbCount, error } = await query.range(from, to);
+      if (error) {
+        console.error('❌ [Supabase searchListings Error]:', error.message, error.details, error.hint, error.code);
+      }
 
       if (!error && data && data.length > 0) {
         listings = data.map((item: any) => ({
@@ -112,7 +114,9 @@ export const searchListings = async (req: Request, res: Response): Promise<void>
         }));
         count = dbCount || listings.length;
       }
-    } catch (dbError) {}
+    } catch (dbError: any) {
+      console.error('❌ [Supabase searchListings Exception]:', dbError.message || dbError);
+    }
 
     // Fallback if DB empty or not yet seeded
     if (listings.length === 0) {
@@ -400,8 +404,12 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
 
       if (!error && data) {
         insertedListing = data;
+      } else if (error) {
+        console.error('❌ [Supabase createListing Error]:', error.message, error.details, error.hint, error.code);
       }
-    } catch (e) {}
+    } catch (e: any) {
+      console.error('❌ [Supabase createListing Exception]:', e.message || e);
+    }
 
     // In case DB failed or not ready
     if (!insertedListing) {
@@ -585,8 +593,12 @@ export const updateListing = async (req: Request, res: Response): Promise<void> 
 
       if (!error && data) {
         updatedListing = data;
+      } else if (error) {
+        console.error('❌ [Supabase updateListing Error]:', error.message, error.details, error.hint, error.code);
       }
-    } catch (e) {}
+    } catch (e: any) {
+      console.error('❌ [Supabase updateListing Exception]:', e.message || e);
+    }
 
     // 2. Update local fallback item
     const index = FALLBACK_LISTINGS.findIndex((l) => l.id === id);
@@ -622,8 +634,13 @@ export const deleteListing = async (req: Request, res: Response): Promise<void> 
 
     // 1. Try Supabase
     try {
-      await supabase.from('listings').delete().eq('id', id);
-    } catch (e) {}
+      const { error } = await supabase.from('listings').delete().eq('id', id);
+      if (error) {
+        console.error('❌ [Supabase deleteListing Error]:', error.message, error.details, error.hint, error.code);
+      }
+    } catch (e: any) {
+      console.error('❌ [Supabase deleteListing Exception]:', e.message || e);
+    }
 
     // 2. Remove from local fallback
     const index = FALLBACK_LISTINGS.findIndex((l) => l.id === id);
@@ -654,8 +671,13 @@ export const updateListingStatus = async (req: Request, res: Response): Promise<
 
     // 1. Try Supabase
     try {
-      await supabase.from('listings').update({ status }).eq('id', id);
-    } catch (e) {}
+      const { error } = await supabase.from('listings').update({ status }).eq('id', id);
+      if (error) {
+        console.error('❌ [Supabase updateListingStatus Error]:', error.message, error.details, error.hint, error.code);
+      }
+    } catch (e: any) {
+      console.error('❌ [Supabase updateListingStatus Exception]:', e.message || e);
+    }
 
     // 2. Update fallback
     const ad = FALLBACK_LISTINGS.find((l) => l.id === id);

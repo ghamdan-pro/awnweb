@@ -99,12 +99,21 @@ export default function App() {
   // Listings data
   const [listings, setListings] = useState<Listing[]>(INITIAL_LISTINGS);
 
+  // Dynamic Categories data (Local Cache + Backend API / Supabase)
+  const [categories, setCategories] = useState<Category[]>(CATEGORIES);
+
   // Offline-First / Cache-First Stale-While-Revalidate Engine & Website Visitor Tracking
   useEffect(() => {
     // 1. Record Website Visitor Count
     apiService.trackVisit('web').catch(() => {});
 
-    // 2. Instant 0ms load from IndexedDB
+    // 2. Instant 0ms load categories & listings from IndexedDB
+    localCacheDb.getCachedCategories().then((cachedCats) => {
+      if (cachedCats && cachedCats.length > 0) {
+        setCategories(cachedCats);
+      }
+    });
+
     localCacheDb.getAllListings().then((cached) => {
       if (cached && cached.length > 0) {
         setListings(cached);
@@ -112,6 +121,13 @@ export default function App() {
     });
 
     // 3. Background Revalidation from Backend API / Supabase
+    apiService.getCategories().then((freshCats) => {
+      if (freshCats && freshCats.length > 0) {
+        setCategories(freshCats);
+        localCacheDb.putCategories(freshCats);
+      }
+    });
+
     apiService.getListings().then((fresh) => {
       if (fresh && fresh.length > 0) {
         setListings(fresh);
@@ -158,15 +174,28 @@ export default function App() {
     setIsDarkMode((prev) => !prev);
   };
 
-  // Two-Way Sync handler (Push / Pull cache and refresh with last 7 days feed)
+  // Two-Way Sync handler (Flush local cache & pull fresh categories + 7 days feed)
   const [isSyncing, setIsSyncing] = useState(false);
   const handleSync = async () => {
     setIsSyncing(true);
     try {
+      // 1. Flush local IndexedDB listings cache to remove stale or deleted items
+      await localCacheDb.clearListings();
+
+      // 2. Fetch fresh dynamic categories from Backend API / Supabase
+      const freshCats = await apiService.getCategories(true);
+      if (freshCats && freshCats.length > 0) {
+        setCategories(freshCats);
+        await localCacheDb.putCategories(freshCats);
+      }
+
+      // 3. Pull fresh listings for the last 7 days
       const fresh = await apiService.getListings({ days: '7' });
       if (fresh && fresh.length > 0) {
         setListings(fresh);
         await localCacheDb.putListings(fresh);
+      } else {
+        setListings([]);
       }
     } catch (e) {
       console.warn('Sync fallback:', e);
@@ -392,7 +421,7 @@ export default function App() {
     });
   }, [listings, selectedCategoryId, selectedSubCategoryId, selectedRegion, searchQuery, filterTab]);
 
-  const activeCategory = CATEGORIES.find((c) => c.id === selectedCategoryId);
+  const activeCategory = categories.find((c) => c.id === selectedCategoryId);
   const activeSubCategory = activeCategory?.subcategories.find((s) => s.id === selectedSubCategoryId);
 
   // If currently in Admin view, render dedicated Admin Dashboard Page!
@@ -579,6 +608,7 @@ export default function App() {
           {/* Categories Sidebar */}
           <aside className="lg:col-span-4 space-y-4">
             <CategoryNav
+              categories={categories}
               selectedCategoryId={selectedCategoryId}
               selectedSubCategoryId={selectedSubCategoryId}
               onSelectCategory={(cat, sub) => {
@@ -880,6 +910,7 @@ export default function App() {
         onAdCreated={handleAdCreated}
         initialSection={postAdSection}
         initialSubCatId={selectedSubCategoryId}
+        categories={categories}
         lang={lang}
         existingListings={listings}
         currentUser={currentUser}

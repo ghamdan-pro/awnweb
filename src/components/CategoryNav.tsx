@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Briefcase, Wrench, Building2, Car, Package, 
 import { CATEGORIES, Category, SubCategory } from '../data/categoriesData';
 
 interface CategoryNavProps {
+  categories?: Category[];
   selectedCategoryId?: string;
   selectedSubCategoryId?: string;
   onSelectCategory: (category?: Category, subCategory?: SubCategory) => void;
@@ -10,6 +11,7 @@ interface CategoryNavProps {
 }
 
 export const CategoryNav: React.FC<CategoryNavProps> = ({
+  categories = CATEGORIES,
   selectedCategoryId,
   selectedSubCategoryId,
   onSelectCategory,
@@ -19,7 +21,7 @@ export const CategoryNav: React.FC<CategoryNavProps> = ({
   const [serviceTab, setServiceTab] = useState<'individual' | 'company' | 'all'>('individual');
   const isAr = lang === 'ar';
 
-  const activeCategory = CATEGORIES.find((c) => c.id === selectedCategoryId);
+  const activeCategory = categories.find((c) => c.id === selectedCategoryId);
   const activeSubCategory = activeCategory?.subcategories.find((s) => s.id === selectedSubCategoryId);
 
   const getCategoryIcon = (iconName: string) => {
@@ -191,7 +193,7 @@ export const CategoryNav: React.FC<CategoryNavProps> = ({
       </div>
 
       <div className="divide-y divide-slate-100">
-        {CATEGORIES.map((cat) => (
+        {categories.map((cat) => (
           <button
             key={cat.id}
             onClick={() => onSelectCategory(cat, undefined)}

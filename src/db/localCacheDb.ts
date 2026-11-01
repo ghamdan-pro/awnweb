@@ -71,6 +71,50 @@ export class LocalCacheDB {
       console.warn('Failed to cache in IndexedDB:', e);
     }
   }
+  async clearListings(): Promise<void> {
+    try {
+      const db = await this.init();
+      return new Promise((resolve) => {
+        const tx = db.transaction('listings', 'readwrite');
+        const store = tx.objectStore('listings');
+        store.clear();
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => resolve();
+      });
+    } catch {
+      // ignore
+    }
+  }
+
+  async getCachedCategories(): Promise<Category[] | null> {
+    try {
+      const db = await this.init();
+      return new Promise((resolve) => {
+        const tx = db.transaction('meta', 'readonly');
+        const store = tx.objectStore('meta');
+        const req = store.get('categories');
+        req.onsuccess = () => resolve(req.result ? req.result.data : null);
+        req.onerror = () => resolve(null);
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  async putCategories(categories: Category[]): Promise<void> {
+    try {
+      const db = await this.init();
+      return new Promise((resolve) => {
+        const tx = db.transaction('meta', 'readwrite');
+        const store = tx.objectStore('meta');
+        store.put({ key: 'categories', data: categories, updatedAt: Date.now() });
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => resolve();
+      });
+    } catch (e) {
+      console.warn('Failed to cache categories in IndexedDB:', e);
+    }
+  }
 }
 
 export const localCacheDb = new LocalCacheDB();

@@ -31,6 +31,7 @@ interface PostAdModalProps {
   existingListings?: Listing[];
   currentUser?: AuthUser | null;
   onUpdateUser?: (updated: AuthUser) => void;
+  categories?: Category[];
 }
 
 export const PostAdModal: React.FC<PostAdModalProps> = ({
@@ -43,6 +44,7 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
   initialSubCatId,
   lang,
   currentUser = null,
+  categories = CATEGORIES,
 }) => {
   const isAr = lang === 'ar';
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -76,7 +78,7 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
 
   // Resolve active category & subcategories
-  const currentCategory = CATEGORIES.find((c) => c.id === selectedCatId) || CATEGORIES[0];
+  const currentCategory = categories.find((c) => c.id === selectedCatId) || categories[0] || CATEGORIES[0];
   const currentSubcategories = currentCategory.subcategories || [];
 
   // Restore saved draft on mount
@@ -99,7 +101,7 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
   // Update cascading subcategory when category changes
   const handleCategoryChange = (newCatId: string) => {
     setSelectedCatId(newCatId);
-    const cat = CATEGORIES.find((c) => c.id === newCatId);
+    const cat = categories.find((c) => c.id === newCatId);
     if (cat && cat.subcategories.length > 0) {
       setSelectedSubCatId(cat.subcategories[0].id);
     }
@@ -331,7 +333,7 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
                 onChange={(e) => handleCategoryChange(e.target.value)}
                 className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-[#68142c] focus:outline-none"
               >
-                {CATEGORIES.map((cat) => (
+                {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
                     {isAr ? cat.nameAr : cat.nameEn}
                   </option>

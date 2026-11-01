@@ -52,6 +52,7 @@ import { API_CONFIG } from '../config/apiConfig';
 import { AuthUser, DEMO_USERS, getAdminPassword, setAdminPassword, DEFAULT_ADMIN_PASSWORD } from '../types/auth';
 import { apiService } from '../services/apiService';
 import { exportListingsToExcel, exportCategoriesToExcel } from '../utils/exportUtils';
+import { localCacheDb } from '../db/localCacheDb';
 
 interface AdminDashboardPageProps {
   onBackToSite: () => void;
@@ -131,12 +132,13 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordMsg, setPasswordMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Save categories to localStorage
+  // Save categories to localStorage & IndexedDB
   const saveCategories = (updated: Category[]) => {
     setCategoriesList(updated);
     try {
       localStorage.setItem('awn_custom_categories', JSON.stringify(updated));
     } catch (e) { }
+    localCacheDb.putCategories(updated).catch(() => {});
   };
 
   // Load live analytics stats

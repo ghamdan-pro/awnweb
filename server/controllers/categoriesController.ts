@@ -690,6 +690,12 @@ export const getCategories = async (req: Request, res: Response): Promise<void> 
         .eq('is_active', true)
         .order('sort_weight', { ascending: true });
 
+      if (error) {
+        console.error('❌ [Supabase getCategories Error]:', error.message, error.details, error.hint, error.code);
+      } else if (!data || data.length === 0) {
+        console.warn('⚠️ [Supabase getCategories]: Categories table returned 0 active rows. Check RLS or table content.');
+      }
+
       if (!error && data && data.length > 0) {
         const parents = data.filter((c: any) => !c.parent_id);
         const hierarchy = parents.map((p: any) => ({
@@ -713,14 +719,14 @@ export const getCategories = async (req: Request, res: Response): Promise<void> 
             })),
         }));
 
-        res.status(200).json({ success: true, data: hierarchy });
+        res.status(200).json({ success: true, source: 'supabase', data: hierarchy });
         return;
       }
-    } catch (e) {
-      // Supabase unavailable, fall through to fallback
+    } catch (e: any) {
+      console.error('❌ [Supabase getCategories Exception]:', e.message || e);
     }
 
-    res.status(200).json({ success: true, data: FALLBACK_CATEGORIES });
+    res.status(200).json({ success: true, source: 'fallback', data: FALLBACK_CATEGORIES });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
