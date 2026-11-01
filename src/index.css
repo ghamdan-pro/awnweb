@@ -62,39 +62,75 @@ body {
   background: linear-gradient(135deg, #e5b23d 0%, #c99316 100%);
 }
 
-/* High-Contrast Protection for Modals, Dialogs, Bottom Sheets & Inputs */
-.dark .bg-white {
-  background-color: var(--bg-card) !important;
-  color: var(--text-page);
-}
-
+/* High-Contrast: Whenever background is white or light (not black/dark), text MUST be deep black #0f172a in all modes */
+.bg-white,
+.bg-white *,
+.dark .bg-white,
+.dark .bg-white *,
+.bg-slate-50,
+.bg-slate-50 *,
 .dark .bg-slate-50,
-.dark .bg-slate-100 {
-  background-color: #1a233a !important;
+.dark .bg-slate-50 *,
+.bg-slate-100,
+.bg-slate-100 *,
+.dark .bg-slate-100,
+.dark .bg-slate-100 *,
+.bg-amber-50,
+.bg-amber-50 *,
+.dark .bg-amber-50,
+.dark .bg-amber-50 *,
+.bg-emerald-50,
+.bg-emerald-50 *,
+.dark .bg-emerald-50,
+.dark .bg-emerald-50 *,
+.bg-rose-50,
+.bg-rose-50 *,
+.dark .bg-rose-50,
+.dark .bg-rose-50 *,
+.bg-blue-50,
+.bg-blue-50 *,
+.dark .bg-blue-50,
+.dark .bg-blue-50 *,
+.bg-gray-50,
+.bg-gray-50 *,
+.dark .bg-gray-50,
+.dark .bg-gray-50 *,
+.bg-gray-100,
+.bg-gray-100 *,
+.dark .bg-gray-100,
+.dark .bg-gray-100 * {
+  color: #0f172a;
 }
 
-.dark .border-slate-200,
-.dark .border-slate-300 {
-  border-color: #2a3754 !important;
-}
-
-.dark .text-slate-900,
-.dark .text-slate-800 {
-  color: #f8fafc !important;
-}
-
-.dark .text-slate-700 {
-  color: #e2e8f0 !important;
-}
-
-.dark .text-slate-600,
-.dark .text-slate-500 {
-  color: #94a3b8 !important;
+/* Allow colored buttons & elements with text-white on light backgrounds to keep white text */
+.bg-white .text-white,
+.bg-white [class*="text-white"],
+.dark .bg-white .text-white,
+.dark .bg-white [class*="text-white"],
+.bg-slate-50 .text-white,
+.bg-slate-50 [class*="text-white"],
+.dark .bg-slate-50 .text-white,
+.dark .bg-slate-50 [class*="text-white"],
+.bg-slate-100 .text-white,
+.bg-slate-100 [class*="text-white"],
+.dark .bg-slate-100 .text-white,
+.dark .bg-slate-100 [class*="text-white"] {
+  color: #ffffff !important;
 }
 
 .dark input,
 .dark select,
 .dark textarea {
+  color: #0f172a;
+  background-color: #ffffff;
+}
+
+.dark .dark\:bg-slate-900 input,
+.dark .dark\:bg-slate-900 select,
+.dark .dark\:bg-slate-900 textarea,
+.dark input.dark\:bg-slate-900,
+.dark select.dark\:bg-slate-900,
+.dark textarea.dark\:bg-slate-900 {
   background-color: #1a233a !important;
   color: #f8fafc !important;
   border-color: #2a3754 !important;

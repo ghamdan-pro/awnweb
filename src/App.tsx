@@ -909,6 +909,7 @@ export default function App() {
         currentCity={selectedCity}
         onAdCreated={handleAdCreated}
         initialSection={postAdSection}
+        initialCategoryId={selectedCategoryId}
         initialSubCatId={selectedSubCategoryId}
         categories={categories}
         lang={lang}
