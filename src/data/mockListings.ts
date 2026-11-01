@@ -63,7 +63,11 @@ export interface Listing {
   regionNameAr: string;
   cityId: string;
   cityNameAr: string;
-  status: 'active' | 'premium' | 'pending' | 'expired';
+  status: 'active' | 'premium' | 'pending' | 'draft' | 'ended' | 'expired' | 'ACTIVE' | 'DRAFT' | 'PENDING_AUTOMATION' | 'ENDED';
+  adType?: 'OFFER' | 'REQUEST';
+  sharePhone?: boolean;
+  creatorPhone?: string;
+  publishedAt?: string;
   purpose: 'call_me' | 'message_me' | 'both';
   contactPhone: string;
   contactEmail?: string;

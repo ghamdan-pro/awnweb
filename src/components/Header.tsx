@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Settings, Smartphone, Monitor, PlusCircle, Wallet, Globe, MapPin, User, Shield, LogIn, Moon, Sun } from 'lucide-react';
+import { Search, Settings, Smartphone, Monitor, PlusCircle, Wallet, Globe, MapPin, User, Shield, LogIn, Moon, Sun, RotateCw } from 'lucide-react';
 import { Region, City } from '../data/yemenRegions';
 import { AuthUser } from '../types/auth';
 
@@ -21,6 +21,8 @@ interface HeaderProps {
   onOpenRules: () => void;
   isDarkMode?: boolean;
   onToggleDarkMode?: () => void;
+  onSync?: () => void;
+  isSyncing?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -41,6 +43,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenRules,
   isDarkMode = false,
   onToggleDarkMode,
+  onSync,
+  isSyncing = false,
 }) => {
   const isAr = lang === 'ar';
 
@@ -80,9 +84,6 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
-          {/* Device viewport toggle */}
-
-
           {/* Lang toggle */}
           <button
             onClick={onToggleLang}
@@ -116,20 +117,30 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Center Search Input */}
-        <div className="flex-1 max-w-md mx-2">
-          <div className="relative">
+        {/* Center Search Input & Two-Way Sync Button */}
+        <div className="flex-1 max-w-md mx-2 flex items-center gap-1.5">
+          <div className="relative flex-1">
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              placeholder={isAr ? 'ما الذي تبحث عنه؟ (وظائف، سيارات، خدمات...)' : 'What are you looking for?'}
+              placeholder={isAr ? 'بحث عن إعلان (وظائف، سيارات، خدمات...)' : 'Search listings, jobs, services...'}
               className="w-full bg-white/95 text-slate-900 placeholder:text-slate-400 rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 shadow-inner"
             />
             <div className={`absolute top-2.5 ${isAr ? 'left-3' : 'right-3'} text-slate-400 pointer-events-none`}>
               <Search size={16} />
             </div>
           </div>
+          {onSync && (
+            <button
+              onClick={onSync}
+              disabled={isSyncing}
+              className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-amber-300 hover:text-amber-100 transition-all border border-white/10 shrink-0 disabled:opacity-50"
+              title={isAr ? 'مزامنة وتحديث فوري (سحب ورفع)' : 'Sync (Push & Pull)'}
+            >
+              <RotateCw size={17} className={isSyncing ? 'animate-spin' : ''} />
+            </button>
+          )}
         </div>
 
         {/* Action icons right side */}

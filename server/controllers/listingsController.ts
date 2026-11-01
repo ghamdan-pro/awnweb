@@ -6,7 +6,7 @@ const FALLBACK_LISTINGS = [...INITIAL_LISTINGS];
 
 export const searchListings = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { category, subcategory, section, region, city, q, page = '1', limit = '20', status, sellerPhone } = req.query;
+    const { category, subcategory, section, adType, region, city, q, page = '1', limit = '20', status, sellerPhone, days } = req.query;
 
     let listings: any[] = [];
     let count = 0;
@@ -17,24 +17,41 @@ export const searchListings = async (req: Request, res: Response): Promise<void>
 
       if (category) query = query.eq('category_id', category);
       if (subcategory) query = query.eq('sub_category_id', subcategory);
+      if (adType) {
+        const normType = (adType as string).toUpperCase();
+        query = query.eq('ad_type', normType);
+      }
       if (region && region !== 'all') query = query.eq('region_id', region);
       if (city) query = query.eq('city_id', city);
-      if (q) query = query.or(`title.ilike.%${q}%,description.ilike.%${q}%`);
+      if (q) query = query.or(`title.ilike.%${q}%,description.ilike.%${q}%,content.ilike.%${q}%`);
       if (sellerPhone) query = query.ilike('contact_phone', `%${sellerPhone}%`);
+
+      // Date cutoff (e.g. default 7 days)
+      if (days) {
+        const daysNum = parseInt(days as string, 10);
+        if (!isNaN(daysNum) && daysNum > 0) {
+          const cutoff = new Date(Date.now() - daysNum * 24 * 60 * 60 * 1000).toISOString();
+          query = query.gte('published_at', cutoff);
+        }
+      }
 
       // Filter by status:
       if (status && status !== 'all') {
-        if (status === 'active') {
-          query = query.in('status', ['active', 'premium']);
+        if (status === 'active' || status === 'ACTIVE') {
+          query = query.in('status', ['active', 'premium', 'ACTIVE', 'PREMIUM']);
         } else {
           query = query.eq('status', status);
         }
       } else if (!status) {
         // Public search: default to active & premium only!
-        query = query.in('status', ['active', 'premium']);
+        query = query.in('status', ['active', 'premium', 'ACTIVE', 'PREMIUM']);
       }
 
-      query = query.order('created_at', { ascending: false });
+      // Priority Sorting: is_featured DESC, published_at DESC, created_at DESC
+      query = query
+        .order('is_featured', { ascending: false })
+        .order('published_at', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false });
 
       const p = parseInt(page as string, 10) || 1;
       const l = parseInt(limit as string, 10) || 20;
@@ -48,6 +65,10 @@ export const searchListings = async (req: Request, res: Response): Promise<void>
           id: item.id,
           title: item.title,
           description: item.description,
+          adType: (item.ad_type || item.metadata?.adType || (item.sdui_section_type === 'worker_profiles' ? 'REQUEST' : 'OFFER')).toUpperCase(),
+          sharePhone: item.share_phone ?? Boolean(item.contact_phone),
+          creatorPhone: item.creator_phone || item.contact_phone,
+          publishedAt: item.published_at || item.created_at,
           categoryId: item.category_id,
           categoryNameAr: item.category_name_ar || item.category_id,
           subCategoryId: item.sub_category_id,
@@ -98,6 +119,13 @@ export const searchListings = async (req: Request, res: Response): Promise<void>
       let filtered = [...FALLBACK_LISTINGS];
       if (category) filtered = filtered.filter((l) => l.categoryId === category);
       if (subcategory) filtered = filtered.filter((l) => l.subCategoryId === subcategory);
+      if (adType) {
+        const normType = (adType as string).toUpperCase();
+        filtered = filtered.filter((l) => {
+          const itemType = ((l as any).adType || (l.sectionType === 'worker_profiles' ? 'REQUEST' : 'OFFER')).toUpperCase();
+          return itemType === normType;
+        });
+      }
       if (section) filtered = filtered.filter((l) => l.sectionType === section);
       if (region && region !== 'all') filtered = filtered.filter((l) => l.regionId === region);
       if (city) filtered = filtered.filter((l) => l.cityId === city);
@@ -105,22 +133,46 @@ export const searchListings = async (req: Request, res: Response): Promise<void>
         filtered = filtered.filter((l) => (l.contactPhone || '').includes(sellerPhone as string));
       }
       if (status && status !== 'all') {
-        if (status === 'active') {
-          filtered = filtered.filter((l) => l.status === 'active' || l.status === 'premium');
+        if (status === 'active' || status === 'ACTIVE') {
+          filtered = filtered.filter((l) => l.status === 'active' || l.status === 'premium' || (l.status as any) === 'ACTIVE');
         } else {
           filtered = filtered.filter((l) => l.status === status);
         }
       } else if (!status) {
-        filtered = filtered.filter((l) => l.status === 'active' || l.status === 'premium');
+        filtered = filtered.filter((l) => l.status === 'active' || l.status === 'premium' || (l.status as any) === 'ACTIVE');
       }
       if (q) {
         const queryLower = (q as string).toLowerCase();
         filtered = filtered.filter(
-          (l) => l.title.toLowerCase().includes(queryLower) || l.description.toLowerCase().includes(queryLower)
+          (l) => l.title.toLowerCase().includes(queryLower) ||
+                 l.description.toLowerCase().includes(queryLower) ||
+                 ((l as any).content && (l as any).content.toLowerCase().includes(queryLower))
         );
       }
+      if (days) {
+        const daysNum = parseInt(days as string, 10);
+        if (!isNaN(daysNum) && daysNum > 0) {
+          const cutoff = Date.now() - daysNum * 24 * 60 * 60 * 1000;
+          filtered = filtered.filter((l) => {
+            const d = new Date((l as any).publishedAt || l.createdAt).getTime();
+            return isNaN(d) || d >= cutoff;
+          });
+        }
+      }
+
+      // Priority sort: is_featured DESC, then publishedAt DESC
+      filtered.sort((a, b) => {
+        const aFeat = (a.status === 'premium' || (a as any).isFeatured || (a as any).is_featured) ? 1 : 0;
+        const bFeat = (b.status === 'premium' || (b as any).isFeatured || (b as any).is_featured) ? 1 : 0;
+        if (aFeat !== bFeat) return bFeat - aFeat;
+        const aTime = new Date((a as any).publishedAt || a.createdAt).getTime() || 0;
+        const bTime = new Date((b as any).publishedAt || b.createdAt).getTime() || 0;
+        return bTime - aTime;
+      });
+
       listings = filtered.map((l) => ({
         ...l,
+        adType: ((l as any).adType || (l.sectionType === 'worker_profiles' ? 'REQUEST' : 'OFFER')).toUpperCase(),
         jobSection: (l as any).jobSection || l.sectionType || 'job_vacancies',
       }));
       count = filtered.length;
@@ -202,6 +254,7 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
       categoryId,
       subCategoryId,
       sectionType = 'general',
+      adType,
       countryId = 'ye',
       regionId,
       regionNameAr,
@@ -224,20 +277,46 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
       mediaUrls = [],
       attributes = [],
       status = 'active',
+      sharePhone = true,
+      creatorPhone,
     } = req.body;
 
-    const isDraft = status === 'draft';
+    const isDraft = status === 'draft' || status === 'DRAFT';
+    const adContent = description || req.body.content || '';
 
-    if (!isDraft && (!title || !contactPhone || !categoryId || !regionId)) {
-      res.status(400).json({ success: false, message: 'العنوان ورقم الاتصال والقسم والمحافظة حقول مطلوبة' });
+    // Only content is mandatory when publishing
+    if (!isDraft && !adContent.trim()) {
+      res.status(400).json({ success: false, message: 'نص وتفاصيل الإعلان حقل مطلوب' });
       return;
     }
 
-    const finalTitle = title || (isDraft ? 'مسودة إعلان بدون عنوان' : '');
-    const finalRegionId = regionId || 'ye-sanaa';
-    const finalCategoryId = categoryId || 'jobs';
-    const finalContactPhone = contactPhone || '';
-    const finalStatus = isDraft ? 'draft' : (status || 'pending');
+    // Auto-derive title from first line or sentence if not provided
+    const trimmedContent = adContent.trim();
+    const firstLine = trimmedContent.split('\n')[0].trim();
+    const derivedTitle = title || (firstLine.length > 55 ? `${firstLine.slice(0, 52)}...` : firstLine) || (isDraft ? 'مسودة بدون عنوان' : 'إعلان جديد');
+
+    const finalAdType = (adType || req.body.ad_type || (sectionType === 'worker_profiles' ? 'REQUEST' : 'OFFER')).toUpperCase();
+    const finalRegionId = regionId || req.body.governorate_id || 'ye-sanaa';
+    const finalCategoryId = categoryId || req.body.main_category_id || 'jobs';
+    const finalSubCategoryId = subCategoryId || req.body.sub_category_id || finalCategoryId;
+    const finalSharePhone = req.body.share_phone ?? sharePhone ?? true;
+    const finalContactPhone = finalSharePhone ? (contactPhone || creatorPhone || req.body.creator_phone || '+967777123456') : '';
+
+    // Automated Moderation Check (Keyword Compliance)
+    const combinedForMod = (derivedTitle + ' ' + adContent).toLowerCase();
+    const isProhibited = /(جنس|مساج خاص|اباحي|دعاره|سهرات خاصه|تعارف بنات|شواذ|سلاح|كلاشنكوف|مسدس للبيع|رصاص|ذخيره|قنابل|طائفيه|عنصريه)/.test(combinedForMod);
+
+    let finalStatus: string;
+    let publishedAt: string | null = null;
+    if (isDraft) {
+      finalStatus = 'DRAFT';
+    } else if (isProhibited) {
+      finalStatus = 'rejected';
+    } else {
+      // Instant automated verification success -> ACTIVE!
+      finalStatus = 'ACTIVE';
+      publishedAt = new Date().toISOString();
+    }
 
     // Resolve valid city_id and cityName for Supabase foreign key
     const defaultCities: Record<string, { id: string; nameAr: string }> = {
@@ -281,11 +360,12 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
         .from('listings')
         .insert({
           seller_id: validSellerId,
-          title: finalTitle,
-          description: description || (isDraft ? 'مسودة إعلان' : ''),
+          title: derivedTitle,
+          description: adContent || (isDraft ? 'مسودة إعلان' : ''),
+          ad_type: finalAdType,
           category_id: finalCategoryId,
-          sub_category_id: subCategoryId || finalCategoryId,
-          sdui_section_type: sectionType,
+          sub_category_id: finalSubCategoryId,
+          sdui_section_type: finalAdType === 'REQUEST' ? 'worker_profiles' : 'job_vacancies',
           company_cr_number: companyCrNumber,
           service_capabilities: companyServicesList,
           country_id: countryId,
@@ -297,19 +377,20 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
           currency,
           is_price_negotiable: priceNegotiable,
           purpose,
-          contact_phone: finalContactPhone || '+967777123456',
-          whatsapp_number: whatsappNumber || finalContactPhone || '+967777123456',
+          contact_phone: finalContactPhone,
+          whatsapp_number: finalContactPhone,
           contact_email: contactEmail,
+          share_phone: finalSharePhone,
+          creator_phone: finalSharePhone ? finalContactPhone : null,
           seller_name: sellerName || 'معلن في عون',
           seller_type: sellerType || 'personal',
           status: finalStatus,
+          published_at: publishedAt,
           metadata: {
-            sectionType,
-            companyCrNumber,
-            companyServicesList,
-            companyPortfolio,
-            workerSkills,
-            workerTitle,
+            adType: finalAdType,
+            sharePhone: finalSharePhone,
+            creatorPhone: finalSharePhone ? finalContactPhone : null,
+            sectionType: finalAdType === 'REQUEST' ? 'worker_profiles' : 'job_vacancies',
             mediaUrls: Array.isArray(mediaUrls) ? mediaUrls : [],
             attributes: Array.isArray(attributes) ? attributes : [],
           },
@@ -326,18 +407,14 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
     if (!insertedListing) {
       insertedListing = {
         id: (isDraft ? 'draft-' : 'user-ad-') + Date.now(),
-        title: finalTitle,
-        description: description || '',
+        title: derivedTitle,
+        description: adContent || '',
+        adType: finalAdType,
         categoryId: finalCategoryId,
         categoryNameAr: finalCategoryId,
-        subCategoryId: subCategoryId || finalCategoryId,
-        subCategoryNameAr: subCategoryId || finalCategoryId,
-        sectionType,
-        companyCrNumber,
-        companyServicesList,
-        companyPortfolio,
-        workerSkills,
-        workerTitle,
+        subCategoryId: finalSubCategoryId,
+        subCategoryNameAr: finalSubCategoryId,
+        sectionType: finalAdType === 'REQUEST' ? 'worker_profiles' : 'job_vacancies',
         price: price ? Number(price) : null,
         currency,
         priceNegotiable,
@@ -346,9 +423,12 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
         cityId: validCityId,
         cityNameAr: validCityName,
         status: finalStatus,
+        publishedAt,
         purpose,
+        sharePhone: finalSharePhone,
+        creatorPhone: finalSharePhone ? finalContactPhone : null,
         contactPhone: finalContactPhone,
-        whatsappNumber: whatsappNumber || finalContactPhone,
+        whatsappNumber: finalContactPhone,
         contactEmail,
         sellerName,
         sellerType,

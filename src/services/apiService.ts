@@ -10,17 +10,22 @@ export const apiService = {
   async getListings(filters: {
     category?: string;
     subcategory?: string;
+    adType?: 'OFFER' | 'REQUEST';
     region?: string;
     city?: string;
     q?: string;
+    days?: string | number;
   } = {}): Promise<Listing[]> {
     try {
       const params = new URLSearchParams();
       if (filters.category) params.append('category', filters.category);
       if (filters.subcategory) params.append('subcategory', filters.subcategory);
+      if (filters.adType) params.append('adType', filters.adType);
       if (filters.region && filters.region !== 'all') params.append('region', filters.region);
       if (filters.city) params.append('city', filters.city);
       if (filters.q) params.append('q', filters.q);
+      const daysVal = filters.days ?? '7';
+      params.append('days', daysVal.toString());
 
       const res = await fetch(`${API_BASE_URL}/listings/search?${params.toString()}`);
       if (res.ok) {
@@ -37,14 +42,42 @@ export const apiService = {
     let results = [...INITIAL_LISTINGS];
     if (filters.category) results = results.filter((l) => l.categoryId === filters.category);
     if (filters.subcategory) results = results.filter((l) => l.subCategoryId === filters.subcategory);
+    if (filters.adType) {
+      results = results.filter(
+        (l) => (l.adType || (l.sectionType === 'worker_profiles' ? 'REQUEST' : 'OFFER')).toUpperCase() === filters.adType
+      );
+    }
     if (filters.region && filters.region !== 'all') results = results.filter((l) => l.regionId === filters.region);
     if (filters.city) results = results.filter((l) => l.cityId === filters.city);
     if (filters.q) {
       const query = filters.q.toLowerCase();
       results = results.filter(
-        (l) => l.title.toLowerCase().includes(query) || l.description.toLowerCase().includes(query)
+        (l) => l.title.toLowerCase().includes(query) ||
+               l.description.toLowerCase().includes(query) ||
+               ((l as any).content && (l as any).content.toLowerCase().includes(query))
       );
     }
+
+    // Days cutoff (default 7 days)
+    const daysNum = typeof filters.days === 'number' ? filters.days : parseInt((filters.days ?? '7') as string, 10);
+    if (!isNaN(daysNum) && daysNum > 0) {
+      const cutoff = Date.now() - daysNum * 24 * 60 * 60 * 1000;
+      results = results.filter((l) => {
+        const d = new Date((l as any).publishedAt || l.createdAt).getTime();
+        return isNaN(d) || d >= cutoff;
+      });
+    }
+
+    // Priority Sort: Featured (مميز) first, then date descending
+    results.sort((a, b) => {
+      const aFeat = (a.status === 'premium' || (a as any).isFeatured || (a as any).is_featured) ? 1 : 0;
+      const bFeat = (b.status === 'premium' || (b as any).isFeatured || (b as any).is_featured) ? 1 : 0;
+      if (aFeat !== bFeat) return bFeat - aFeat;
+      const aTime = new Date((a as any).publishedAt || a.createdAt).getTime() || 0;
+      const bTime = new Date((b as any).publishedAt || b.createdAt).getTime() || 0;
+      return bTime - aTime;
+    });
+
     return results;
   },
 
@@ -69,10 +102,20 @@ export const apiService = {
     }
 
     // In-memory fallback
+    const rawContent = listingData.description || (listingData as any).content || '';
+    const firstSentence = rawContent.trim().split('\n')[0].slice(0, 50);
+    const derivedTitle = listingData.title || (firstSentence ? `${firstSentence}...` : 'إعلان بدون عنوان');
+    const adType = (listingData.adType || (listingData.sectionType === 'worker_profiles' ? 'REQUEST' : 'OFFER')).toUpperCase() as 'OFFER' | 'REQUEST';
+    const isDraft = listingData.status === 'draft' || listingData.status === 'DRAFT';
+
     const newAd: Listing = {
       id: 'listing-' + Date.now(),
-      title: listingData.title || '',
-      description: listingData.description || '',
+      title: derivedTitle,
+      description: rawContent,
+      adType,
+      sharePhone: listingData.sharePhone ?? true,
+      creatorPhone: listingData.creatorPhone || listingData.contactPhone,
+      publishedAt: isDraft ? undefined : new Date().toISOString(),
       categoryId: listingData.categoryId || 'jobs',
       categoryNameAr: listingData.categoryNameAr || 'وظائف',
       subCategoryId: listingData.subCategoryId || 'jobs-culinary',
@@ -85,7 +128,7 @@ export const apiService = {
       regionNameAr: listingData.regionNameAr || 'صنعاء',
       cityId: listingData.cityId || 'ye-san-hadda',
       cityNameAr: listingData.cityNameAr || 'حدة',
-      status: 'active',
+      status: isDraft ? 'DRAFT' : 'ACTIVE',
       purpose: listingData.purpose || 'both',
       contactPhone: listingData.contactPhone || '+967777123456',
       whatsappNumber: listingData.whatsappNumber || '+967777123456',

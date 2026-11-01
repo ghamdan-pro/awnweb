@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Phone, MessageCircle, Star, ShieldCheck, Briefcase, UserCheck, Building2, ChevronLeft, Lock } from 'lucide-react';
+import { MapPin, Phone, MessageCircle, Star, ShieldCheck, Briefcase, UserCheck, Building2, ChevronLeft, Lock, Eye, Tag, Search } from 'lucide-react';
 import { Listing } from '../data/mockListings';
 import { AuthUser } from '../types/auth';
 
@@ -50,34 +50,33 @@ export const CompactPublisherCard: React.FC<CompactPublisherCardProps> = ({
     window.open(`https://wa.me/${cleanNumber}?text=${text}`, '_blank');
   };
 
+  // تمييز نوع الإعلان: عرض (أخضر زمردي) أو طلب (بنفسجي متميز)
+  const isRequest =
+    (listing as any).adType === 'REQUEST' ||
+    listing.sectionType === 'worker_profiles' ||
+    (listing as any).sectionType === 'طلب' ||
+    (listing as any).isRequest === true;
 
-  // Badge styling based on sectionType
+  const isFeatured =
+    listing.status === 'premium' ||
+    (listing as any).isFeatured === true ||
+    (listing as any).is_featured === true;
+
   const getBadgeInfo = () => {
-    switch (listing.sectionType) {
-      case 'job_vacancies':
-        return {
-          text: isAr ? 'فرصة عمل (صاحب عمل)' : 'Job Vacancy',
-          color: 'bg-emerald-50 text-emerald-800 border-emerald-300',
-          icon: <Briefcase size={12} className="text-emerald-700" />,
-        };
-      case 'worker_profiles':
-        return {
-          text: isAr ? 'كفاءة مهنية (طالب عمل)' : 'Worker Profile',
-          color: 'bg-amber-50 text-amber-900 border-amber-300',
-          icon: <UserCheck size={12} className="text-amber-800" />,
-        };
-      case 'company_services':
-        return {
-          text: isAr ? 'خدمات شركات ومؤسسات' : 'Company Services',
-          color: 'bg-indigo-50 text-indigo-900 border-indigo-300',
-          icon: <Building2 size={12} className="text-indigo-800" />,
-        };
-      default:
-        return {
-          text: isAr ? 'إعلان منشور' : 'Published Ad',
-          color: 'bg-slate-50 text-slate-700 border-slate-200',
-          icon: <ShieldCheck size={12} className="text-slate-600" />,
-        };
+    if (isRequest) {
+      return {
+        text: isAr ? 'طلب' : 'Request',
+        color: 'bg-purple-50 text-purple-700 border-purple-300 font-bold',
+        cardBorder: 'border-r-4 border-r-purple-500 hover:border-purple-500/60',
+        icon: <Search size={12} className="text-purple-600" />,
+      };
+    } else {
+      return {
+        text: isAr ? 'عرض' : 'Offer',
+        color: 'bg-emerald-50 text-emerald-800 border-emerald-300 font-bold',
+        cardBorder: 'border-r-4 border-r-emerald-500 hover:border-emerald-500/60',
+        icon: <Tag size={12} className="text-emerald-600" />,
+      };
     }
   };
 
@@ -86,7 +85,7 @@ export const CompactPublisherCard: React.FC<CompactPublisherCardProps> = ({
   return (
     <div
       onClick={handleCardClick}
-      className="bg-white rounded-xl border border-slate-200 shadow-xs hover:shadow-md hover:border-[#68142c]/40 transition-all duration-200 p-3 sm:p-4 cursor-pointer flex flex-col sm:flex-row gap-3 sm:gap-4 group relative"
+      className={`bg-white rounded-xl border border-slate-200 shadow-xs hover:shadow-md transition-all duration-200 p-3 sm:p-4 cursor-pointer flex flex-col sm:flex-row gap-3 sm:gap-4 group relative ${badge.cardBorder}`}
     >
       {/* Compact Image */}
       <div className="relative w-full sm:w-44 h-36 sm:h-32 shrink-0 rounded-lg overflow-hidden bg-slate-100">
@@ -103,8 +102,8 @@ export const CompactPublisherCard: React.FC<CompactPublisherCardProps> = ({
           </div>
         )}
 
-        {/* Featured Tag */}
-        {listing.status === 'premium' && (
+        {/* Featured Tag (مميز) */}
+        {isFeatured && (
           <div className="absolute top-1.5 right-1.5 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black text-[10px] px-1.5 py-0.5 rounded shadow-xs flex items-center gap-0.5">
             <Star size={10} className="fill-slate-950" />
             <span>{isAr ? 'مميز' : 'Featured'}</span>
@@ -122,11 +121,20 @@ export const CompactPublisherCard: React.FC<CompactPublisherCardProps> = ({
       {/* Content & Publisher Summary */}
       <div className="flex-1 flex flex-col justify-between min-w-0">
         <div>
-          {/* Top Line: Badge & Location */}
+          {/* Top Line: Badge, Views (من الخارج فقط) & Location */}
           <div className="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
-            <div className={`flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md border ${badge.color}`}>
-              {badge.icon}
-              <span>{badge.text}</span>
+            <div className="flex items-center gap-2">
+              <div className={`flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-md border ${badge.color}`}>
+                {badge.icon}
+                <span>{badge.text}</span>
+              </div>
+
+              {/* إظهار عدد المشاهدات من الخارج فقط */}
+              <div className="flex items-center gap-1 text-[11px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/70" title={isAr ? 'عدد المشاهدات' : 'Views'}>
+                <Eye size={12} className="text-slate-500" />
+                <span>{(listing.viewsCount || 1).toLocaleString()}</span>
+                <span className="text-[10px] text-slate-400 font-normal">{isAr ? 'مشاهدة' : 'views'}</span>
+              </div>
             </div>
 
             <div className="flex items-center gap-1 text-xs text-slate-500">

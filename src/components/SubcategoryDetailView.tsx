@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ArrowRight, Briefcase, UserCheck, Building2, PlusCircle, Filter, Sparkles, MapPin, Search } from 'lucide-react';
+import { ArrowRight, Briefcase, UserCheck, PlusCircle, Filter, Sparkles, MapPin, Search, Layers, Tag } from 'lucide-react';
 import { Category, SubCategory } from '../data/categoriesData';
 import { Listing, ListingSectionType } from '../data/mockListings';
 import { AuthUser } from '../types/auth';
@@ -29,32 +29,44 @@ export const SubcategoryDetailView: React.FC<SubcategoryDetailViewProps> = ({
   lang,
 }) => {
   const isAr = lang === 'ar';
-  const [activeSection, setActiveSection] = useState<ListingSectionType>('job_vacancies');
+  const [activeSection, setActiveSection] = useState<'all' | 'job_vacancies' | 'worker_profiles'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Filter listings for this specific subcategory
+  const isRequest = (l: Listing): boolean => {
+    const t = ((l as any).adType || (l as any).ad_type || '').toUpperCase();
+    if (t === 'REQUEST' || t === 'طلب') return true;
+    if (t === 'OFFER' || t === 'عرض') return false;
+    return l.sectionType === 'worker_profiles';
+  };
+
+  // Filter listings for this specific subcategory (Active only)
   const subCategoryListings = useMemo(() => {
-    return listings.filter((l) => l.subCategoryId === subCategory.id);
+    return listings.filter((l) => {
+      const isSubMatch = l.subCategoryId === subCategory.id || (l as any).sub_category_id === subCategory.id;
+      const isActive = l.status === 'active' || l.status === 'ACTIVE' || l.status === 'premium';
+      return isSubMatch && isActive;
+    });
   }, [listings, subCategory.id]);
 
-  // Counts for each of the 3 sections
-  const vacanciesCount = useMemo(() => {
-    return subCategoryListings.filter((l) => l.sectionType === 'job_vacancies').length;
+  // Counts for the 3 sections: الكل, عرض, طلب
+  const totalCount = subCategoryListings.length;
+  const offersCount = useMemo(() => {
+    return subCategoryListings.filter((l) => !isRequest(l)).length;
   }, [subCategoryListings]);
 
-  const workersCount = useMemo(() => {
-    return subCategoryListings.filter((l) => l.sectionType === 'worker_profiles').length;
-  }, [subCategoryListings]);
-
-  const companiesCount = useMemo(() => {
-    return subCategoryListings.filter((l) => l.sectionType === 'company_services').length;
+  const requestsCount = useMemo(() => {
+    return subCategoryListings.filter((l) => isRequest(l)).length;
   }, [subCategoryListings]);
 
   // Current active filtered list
   const displayedListings = useMemo(() => {
     return subCategoryListings.filter((l) => {
-      // If the listing explicitly matches the section or fallback to worker_profiles/job_vacancies
-      const matchesSection = l.sectionType === activeSection || (!l.sectionType && activeSection === 'worker_profiles');
+      let matchesSection = true;
+      if (activeSection === 'job_vacancies') {
+        matchesSection = !isRequest(l);
+      } else if (activeSection === 'worker_profiles') {
+        matchesSection = isRequest(l);
+      }
       if (!matchesSection) return false;
 
       if (searchQuery.trim()) {
@@ -117,7 +129,7 @@ export const SubcategoryDetailView: React.FC<SubcategoryDetailViewProps> = ({
       </div>
 
       {/* =========================================================================
-          عرض الأقسام الثلاثة الرئيسية (The 3 Core Sub-Sections Required by User)
+          عرض الأقسام الثلاثة: الكل / عرض / طلب (وحذف البقية)
          ========================================================================= */}
       <div className="bg-white rounded-2xl p-2 sm:p-3 border border-slate-200 shadow-xs">
         <div className="text-xs font-bold text-slate-500 mb-2 px-2 flex items-center justify-between">
@@ -128,7 +140,47 @@ export const SubcategoryDetailView: React.FC<SubcategoryDetailViewProps> = ({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          {/* 1. إعلانات فرص عمل (Job Vacancies) */}
+          {/* 1. الكل (All) */}
+          <button
+            onClick={() => setActiveSection('all')}
+            className={`p-3 rounded-xl border text-right transition-all flex items-center justify-between gap-3 ${
+              activeSection === 'all'
+                ? 'bg-gradient-to-l from-slate-100 to-white border-slate-800 text-slate-950 shadow-xs ring-2 ring-slate-800/20'
+                : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <div
+                className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
+                  activeSection === 'all'
+                    ? 'bg-slate-800 text-white shadow-xs'
+                    : 'bg-slate-200 text-slate-700'
+                }`}
+              >
+                <Layers size={20} />
+              </div>
+              <div>
+                <span className="font-bold text-xs sm:text-sm block">
+                  {isAr ? 'الكل' : 'All Listings'}
+                </span>
+                <span className="text-[10px] text-slate-500 block">
+                  {isAr ? 'جميع العروض والطلبات' : 'All offers & requests'}
+                </span>
+              </div>
+            </div>
+
+            <span
+              className={`text-xs font-black px-2 py-0.5 rounded-full ${
+                activeSection === 'all'
+                  ? 'bg-slate-800 text-white'
+                  : 'bg-slate-200 text-slate-700'
+              }`}
+            >
+              {totalCount}
+            </span>
+          </button>
+
+          {/* 2. عرض (Offers) */}
           <button
             onClick={() => setActiveSection('job_vacancies')}
             className={`p-3 rounded-xl border text-right transition-all flex items-center justify-between gap-3 ${
@@ -145,14 +197,14 @@ export const SubcategoryDetailView: React.FC<SubcategoryDetailViewProps> = ({
                     : 'bg-emerald-100 text-emerald-800'
                 }`}
               >
-                <Briefcase size={20} />
+                <Tag size={20} />
               </div>
               <div>
-                <span className="font-bold text-xs sm:text-sm block">
-                  {isAr ? 'إعلانات فرص عمل' : 'Job Vacancies'}
+                <span className="font-bold text-xs sm:text-sm block text-emerald-950">
+                  {isAr ? 'عرض' : 'Offers'}
                 </span>
                 <span className="text-[10px] text-slate-500 block">
-                  {isAr ? 'وظائف شاغرة من أصحاب العمل' : 'Openings from employers'}
+                  {isAr ? 'فرص عمل وعروض معلنة' : 'Openings & Offerings'}
                 </span>
               </div>
             </div>
@@ -164,16 +216,16 @@ export const SubcategoryDetailView: React.FC<SubcategoryDetailViewProps> = ({
                   : 'bg-slate-200 text-slate-700'
               }`}
             >
-              {vacanciesCount}
+              {offersCount}
             </span>
           </button>
 
-          {/* 2. إعلانات العمال والكفاءات (Worker Profiles) */}
+          {/* 3. طلب (Requests) */}
           <button
             onClick={() => setActiveSection('worker_profiles')}
             className={`p-3 rounded-xl border text-right transition-all flex items-center justify-between gap-3 ${
               activeSection === 'worker_profiles'
-                ? 'bg-gradient-to-l from-amber-50 to-white border-amber-500 text-amber-950 shadow-xs ring-2 ring-amber-500/20'
+                ? 'bg-gradient-to-l from-blue-50 to-white border-blue-500 text-blue-950 shadow-xs ring-2 ring-blue-500/20'
                 : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
             }`}
           >
@@ -181,18 +233,18 @@ export const SubcategoryDetailView: React.FC<SubcategoryDetailViewProps> = ({
               <div
                 className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
                   activeSection === 'worker_profiles'
-                    ? 'bg-amber-600 text-white shadow-xs'
-                    : 'bg-amber-100 text-amber-900'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-blue-100 text-blue-900'
                 }`}
               >
-                <UserCheck size={20} />
+                <Search size={20} />
               </div>
               <div>
-                <span className="font-bold text-xs sm:text-sm block">
-                  {isAr ? 'يطلب عمل' : 'Job Seekers'}
+                <span className="font-bold text-xs sm:text-sm block text-blue-950">
+                  {isAr ? 'طلب' : 'Requests'}
                 </span>
                 <span className="text-[10px] text-slate-500 block">
-                  {isAr ? 'باحثين عن عمل وكفاءات مهنية' : 'Job Seekers & Artisans'}
+                  {isAr ? 'باحثين عن عمل وكفاءات' : 'Job Seekers & Requests'}
                 </span>
               </div>
             </div>
@@ -200,51 +252,11 @@ export const SubcategoryDetailView: React.FC<SubcategoryDetailViewProps> = ({
             <span
               className={`text-xs font-black px-2 py-0.5 rounded-full ${
                 activeSection === 'worker_profiles'
-                  ? 'bg-amber-600 text-white'
+                  ? 'bg-blue-600 text-white'
                   : 'bg-slate-200 text-slate-700'
               }`}
             >
-              {workersCount}
-            </span>
-          </button>
-
-          {/* 3. تقديم خدمات الشركات (Company Services) */}
-          <button
-            onClick={() => setActiveSection('company_services')}
-            className={`p-3 rounded-xl border text-right transition-all flex items-center justify-between gap-3 ${
-              activeSection === 'company_services'
-                ? 'bg-gradient-to-l from-indigo-50 to-white border-indigo-500 text-indigo-950 shadow-xs ring-2 ring-indigo-500/20'
-                : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <div
-                className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
-                  activeSection === 'company_services'
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'bg-indigo-100 text-indigo-900'
-                }`}
-              >
-                <Building2 size={20} />
-              </div>
-              <div>
-                <span className="font-bold text-xs sm:text-sm block">
-                  {isAr ? 'خدمات' : 'Services'}
-                </span>
-                <span className="text-[10px] text-slate-500 block">
-                  {isAr ? 'عروض خدمات شركات ومؤسسات' : 'Corporate & Business Offerings'}
-                </span>
-              </div>
-            </div>
-
-            <span
-              className={`text-xs font-black px-2 py-0.5 rounded-full ${
-                activeSection === 'company_services'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-slate-200 text-slate-700'
-              }`}
-            >
-              {companiesCount}
+              {requestsCount}
             </span>
           </button>
         </div>
@@ -256,8 +268,8 @@ export const SubcategoryDetailView: React.FC<SubcategoryDetailViewProps> = ({
           activeSection === 'job_vacancies'
             ? 'bg-emerald-50/80 border-emerald-200 text-emerald-900'
             : activeSection === 'worker_profiles'
-            ? 'bg-amber-50/80 border-amber-200 text-amber-900'
-            : 'bg-indigo-50/80 border-indigo-200 text-indigo-900'
+            ? 'bg-blue-50/80 border-blue-200 text-blue-900'
+            : 'bg-slate-100 border-slate-200 text-slate-800'
         }`}
       >
         <div className="flex items-center gap-2">
@@ -265,16 +277,16 @@ export const SubcategoryDetailView: React.FC<SubcategoryDetailViewProps> = ({
           <span className="font-medium">
             {activeSection === 'job_vacancies' &&
               (isAr
-                ? 'تعرض هذه القائمة الوظائف والفرص الشاغرة المنشورة من قبل أصحاب المطاعم والمنشآت في هذا التخصص.'
-                : 'Displaying job openings and vacancies posted by employers.')}
+                ? 'تعرض هذه القائمة العروض والفرص الشاغرة المنشورة من قبل أصحاب الأعمال والمنشآت.'
+                : 'Displaying available offers and vacancies posted by employers.')}
             {activeSection === 'worker_profiles' &&
               (isAr
-                ? 'تعرض هذه القائمة المهنيين والكوادر والعمال الراغبين بالعمل مع ملخص خبراتهم ومهاراتهم الجاهزة.'
-                : 'Displaying resumes and professional profiles of available personnel.')}
-            {activeSection === 'company_services' &&
+                ? 'تعرض هذه القائمة الطلبات والكوادر والمهنيين الراغبين بالعمل مع ملخص خبراتهم.'
+                : 'Displaying candidate requests, job seekers, and professional resumes.')}
+            {activeSection === 'all' &&
               (isAr
-                ? 'تعرض هذه القائمة عروض وخدمات الشركات والمؤسسات المعتمدة بسجل تجاري رسمي وسجل أعمال موثق.'
-                : 'Displaying corporate service offerings with official commercial records.')}
+                ? 'تعرض هذه القائمة جميع الإعلانات المنشورة في هذا التخصص (عروض وطلبات).'
+                : 'Displaying all listings in this section (offers and requests).')}
           </span>
         </div>
 

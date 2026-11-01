@@ -106,11 +106,10 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
         <div className="bg-slate-900/90 px-6 pt-2 border-b border-slate-800 flex items-center gap-2 overflow-x-auto text-xs font-bold">
           <button
             onClick={() => setActiveTab('kpi')}
-            className={`pb-3 px-3 flex items-center gap-2 border-b-2 transition-all ${
-              activeTab === 'kpi'
+            className={`pb-3 px-3 flex items-center gap-2 border-b-2 transition-all ${activeTab === 'kpi'
                 ? 'border-amber-400 text-amber-400'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
+              }`}
           >
             <TrendingUp size={16} />
             <span>{isAr ? 'المؤشرات العامة (KPIs)' : 'Overview & KPIs'}</span>
@@ -118,11 +117,10 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
 
           <button
             onClick={() => setActiveTab('listings')}
-            className={`pb-3 px-3 flex items-center gap-2 border-b-2 transition-all ${
-              activeTab === 'listings'
+            className={`pb-3 px-3 flex items-center gap-2 border-b-2 transition-all ${activeTab === 'listings'
                 ? 'border-amber-400 text-amber-400'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
+              }`}
           >
             <Layers size={16} />
             <span>{isAr ? `إدارة الإعلانات (${listings.length})` : `Listings (${listings.length})`}</span>
@@ -130,11 +128,10 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
 
           <button
             onClick={() => setActiveTab('categories')}
-            className={`pb-3 px-3 flex items-center gap-2 border-b-2 transition-all ${
-              activeTab === 'categories'
+            className={`pb-3 px-3 flex items-center gap-2 border-b-2 transition-all ${activeTab === 'categories'
                 ? 'border-amber-400 text-amber-400'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
+              }`}
           >
             <Layers size={16} />
             <span>{isAr ? `الأقسام (${CATEGORIES.length})` : `Categories (${CATEGORIES.length})`}</span>
@@ -142,11 +139,10 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
 
           <button
             onClick={() => setActiveTab('users')}
-            className={`pb-3 px-3 flex items-center gap-2 border-b-2 transition-all ${
-              activeTab === 'users'
+            className={`pb-3 px-3 flex items-center gap-2 border-b-2 transition-all ${activeTab === 'users'
                 ? 'border-amber-400 text-amber-400'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
+              }`}
           >
             <Users size={16} />
             <span>{isAr ? 'المستخدمين والمعلنين' : 'Users & Verification'}</span>
@@ -154,11 +150,10 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
 
           <button
             onClick={() => setActiveTab('system')}
-            className={`pb-3 px-3 flex items-center gap-2 border-b-2 transition-all ${
-              activeTab === 'system'
+            className={`pb-3 px-3 flex items-center gap-2 border-b-2 transition-all ${activeTab === 'system'
                 ? 'border-amber-400 text-amber-400'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
+              }`}
           >
             <Settings2 size={16} />
             <span>{isAr ? 'إعدادات النظام و Vercel' : 'System & Deployment'}</span>
@@ -237,8 +232,8 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                     {syncStatus === 'testing'
                       ? (isAr ? 'جارٍ الفحص...' : 'Testing...')
                       : syncStatus === 'success'
-                      ? (isAr ? 'تم التحقق بنجاح ✓' : 'Success ✓')
-                      : (isAr ? 'فحص ومزامنة البيانات الآن' : 'Test Sync Now')}
+                        ? (isAr ? 'تم التحقق بنجاح ✓' : 'Success ✓')
+                        : (isAr ? 'فحص ومزامنة البيانات الآن' : 'Test Sync Now')}
                   </span>
                 </button>
               </div>
@@ -292,6 +287,19 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                         </td>
                         <td className="p-3 text-center">
                           <div className="flex items-center justify-center gap-1.5">
+                            {l.status !== 'ended' && (l.status as any) !== 'ENDED' ? (
+                              <button
+                                onClick={() => onUpdateListingStatus && onUpdateListingStatus(l.id, 'ended' as any)}
+                                className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 hover:bg-purple-500/40 text-[10px] font-bold transition-colors"
+                                title={isAr ? 'إنهاء الإعلان' : 'End Ad'}
+                              >
+                                {isAr ? 'إنهاء الإعلان' : 'End Ad'}
+                              </button>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-700 text-slate-400">
+                                {isAr ? 'منتهي' : 'Ended'}
+                              </span>
+                            )}
                             <button
                               onClick={() => onDeleteListing && onDeleteListing(l.id)}
                               className="p-1 rounded bg-rose-500/20 text-rose-300 hover:bg-rose-500/40 transition-colors"
@@ -360,7 +368,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                       <td className="p-3">
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-400/20 text-amber-300">Super Admin</span>
                       </td>
-                      <td className="p-3 text-emerald-400 font-bold">✓ موثق</td>
+                      <td className="p-3 text-emerald-400 font-bold">✓ مشترك</td>
                     </tr>
                     <tr>
                       <td className="p-3 font-semibold text-white">حمزة الشيف اليمني</td>
@@ -369,7 +377,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                       <td className="p-3">
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-700 text-slate-300">معلن / باحث عمل</span>
                       </td>
-                      <td className="p-3 text-emerald-400 font-bold">✓ موثق (+967)</td>
+                      <td className="p-3 text-emerald-400 font-bold">✓ مشترك (+967)</td>
                     </tr>
                   </tbody>
                 </table>

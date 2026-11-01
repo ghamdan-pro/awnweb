@@ -26,6 +26,8 @@ import {
   MousePointerClick,
   Shield,
   Sparkles,
+  Tag,
+  Search,
 } from 'lucide-react';
 import { Listing } from '../data/mockListings';
 import { AuthUser } from '../types/auth';
@@ -57,13 +59,13 @@ export const ListingDetailsModal: React.FC<ListingDetailsModalProps> = ({
     listing.media.length > 0
       ? listing.media
       : [
-          {
-            id: 'placeholder',
-            url: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=800&auto=format&fit=crop&q=80',
-            isPrimary: true,
-            orderWeight: 0,
-          },
-        ];
+        {
+          id: 'placeholder',
+          url: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=800&auto=format&fit=crop&q=80',
+          isPrimary: true,
+          orderWeight: 0,
+        },
+      ];
 
   const handleCall = () => {
     window.location.href = `tel:${listing.contactPhone.replace(/\s+/g, '')}`;
@@ -86,7 +88,7 @@ export const ListingDetailsModal: React.FC<ListingDetailsModalProps> = ({
           text: listing.description,
           url: window.location.href,
         })
-        .catch(() => {});
+        .catch(() => { });
     } else {
       navigator.clipboard.writeText(window.location.href);
       setCopied(true);
@@ -101,8 +103,8 @@ export const ListingDetailsModal: React.FC<ListingDetailsModalProps> = ({
   const isOwner = Boolean(
     currentUser &&
     (currentUser.role === 'admin' ||
-     currentUser.name.trim().toLowerCase() === listing.sellerName.trim().toLowerCase() ||
-     (currentUser.phone && listing.contactPhone && currentUser.phone.replace(/\s+/g, '') === listing.contactPhone.replace(/\s+/g, '')))
+      currentUser.name.trim().toLowerCase() === listing.sellerName.trim().toLowerCase() ||
+      (currentUser.phone && listing.contactPhone && currentUser.phone.replace(/\s+/g, '') === listing.contactPhone.replace(/\s+/g, '')))
   );
 
   return (
@@ -178,9 +180,8 @@ export const ListingDetailsModal: React.FC<ListingDetailsModalProps> = ({
                     {images.map((_, idx) => (
                       <span
                         key={idx}
-                        className={`w-2 h-2 rounded-full transition-all ${
-                          idx === activeImgIndex ? 'bg-amber-400 w-4' : 'bg-white/60'
-                        }`}
+                        className={`w-2 h-2 rounded-full transition-all ${idx === activeImgIndex ? 'bg-amber-400 w-4' : 'bg-white/60'
+                          }`}
                       />
                     ))}
                   </div>
@@ -190,22 +191,15 @@ export const ListingDetailsModal: React.FC<ListingDetailsModalProps> = ({
               {/* Title, Badge & Price Banner */}
               <div className="space-y-2.5">
                 <div className="flex flex-wrap items-center gap-2">
-                  {listing.sectionType === 'job_vacancies' && (
+                  {listing.sectionType === 'worker_profiles' ? (
+                    <span className="text-xs font-bold bg-blue-100 text-blue-900 px-2.5 py-1 rounded-md border border-blue-300 flex items-center gap-1">
+                      <Search size={13} className="text-blue-700" />
+                      <span>{isAr ? 'طلب' : 'Request'}</span>
+                    </span>
+                  ) : (
                     <span className="text-xs font-bold bg-emerald-100 text-emerald-900 px-2.5 py-1 rounded-md border border-emerald-300 flex items-center gap-1">
-                      <Briefcase size={13} />
-                      <span>{isAr ? 'فرصة عمل شاغرة (صاحب عمل)' : 'Job Vacancy'}</span>
-                    </span>
-                  )}
-                  {listing.sectionType === 'worker_profiles' && (
-                    <span className="text-xs font-bold bg-amber-100 text-amber-950 px-2.5 py-1 rounded-md border border-amber-300 flex items-center gap-1">
-                      <UserCheck size={13} />
-                      <span>{isAr ? 'كفاءة مهنية (طالب عمل)' : 'Worker Profile'}</span>
-                    </span>
-                  )}
-                  {listing.sectionType === 'company_services' && (
-                    <span className="text-xs font-bold bg-indigo-100 text-indigo-950 px-2.5 py-1 rounded-md border border-indigo-300 flex items-center gap-1">
-                      <Building2 size={13} />
-                      <span>{isAr ? 'خدمات شركات ومؤسسات معتمدة' : 'Verified Company'}</span>
+                      <Tag size={13} className="text-emerald-700" />
+                      <span>{isAr ? 'عرض' : 'Offer'}</span>
                     </span>
                   )}
                   {listing.status === 'premium' && (
@@ -232,10 +226,10 @@ export const ListingDetailsModal: React.FC<ListingDetailsModalProps> = ({
                                 ? 'ريال يمني'
                                 : 'YER'
                               : listing.currency === 'SAR'
-                              ? isAr
-                                ? 'ريال سعودي'
-                                : 'SAR'
-                              : 'دولار أمريكي'}
+                                ? isAr
+                                  ? 'ريال سعودي'
+                                  : 'SAR'
+                                : 'دولار أمريكي'}
                           </span>
                         </span>
                         {listing.priceNegotiable && (
@@ -325,10 +319,6 @@ export const ListingDetailsModal: React.FC<ListingDetailsModalProps> = ({
                       <Shield size={13} className="text-slate-400" />
                       <span>{isAr ? 'العرض متاح للجميع • صلاحيات التعديل والحذف محجوبة ومقتصرة على صاحب الإعلان فقط' : 'Public view • Modifications protected'}</span>
                     </span>
-                    <span className="text-[11px] text-slate-500 font-semibold flex items-center gap-1">
-                      <Eye size={12} />
-                      <span>{(listing.viewsCount || 148).toLocaleString()} {isAr ? 'مشاهدة' : 'views'}</span>
-                    </span>
                   </div>
                 )}
               </div>
@@ -348,7 +338,7 @@ export const ListingDetailsModal: React.FC<ListingDetailsModalProps> = ({
                         </h4>
                         <span className="text-[10px] bg-emerald-500 text-slate-950 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                           <CheckCircle2 size={10} />
-                          <span>{isAr ? 'موثق رسمياً' : 'Verified'}</span>
+                          <span>{isAr ? 'مشترك رسمياً' : 'Verified'}</span>
                         </span>
                       </div>
                       <p className="text-xs text-indigo-100 font-medium">
@@ -543,7 +533,7 @@ export const ListingDetailsModal: React.FC<ListingDetailsModalProps> = ({
                     <h4 className="font-bold text-slate-900 text-base">{listing.sellerName}</h4>
                     <div className="flex items-center gap-1 text-emerald-700 text-xs font-semibold mt-0.5">
                       <ShieldCheck size={14} />
-                      <span>{isAr ? 'معلن موثق في عون يمن' : 'Verified Seller'}</span>
+                      <span>{isAr ? 'معلن مشترك في عون يمن' : 'Verified Seller'}</span>
                     </div>
                   </div>
                 </div>
@@ -557,12 +547,12 @@ export const ListingDetailsModal: React.FC<ListingDetailsModalProps> = ({
                           ? 'حساب شخصي'
                           : 'Personal'
                         : listing.sellerType === 'company'
-                        ? isAr
-                          ? 'شركة ومؤسسة'
-                          : 'Company'
-                        : isAr
-                        ? 'وكالة'
-                        : 'Agency'}
+                          ? isAr
+                            ? 'شركة ومؤسسة'
+                            : 'Company'
+                          : isAr
+                            ? 'وكالة'
+                            : 'Agency'}
                     </strong>
                   </div>
                   <div className="flex justify-between">

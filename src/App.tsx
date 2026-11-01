@@ -158,6 +158,23 @@ export default function App() {
     setIsDarkMode((prev) => !prev);
   };
 
+  // Two-Way Sync handler (Push / Pull cache and refresh with last 7 days feed)
+  const [isSyncing, setIsSyncing] = useState(false);
+  const handleSync = async () => {
+    setIsSyncing(true);
+    try {
+      const fresh = await apiService.getListings({ days: '7' });
+      if (fresh && fresh.length > 0) {
+        setListings(fresh);
+        await localCacheDb.putListings(fresh);
+      }
+    } catch (e) {
+      console.warn('Sync fallback:', e);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   // Warning Popups (from Mourjan screenshots)
   const [warningType, setWarningType] = useState<'scam_warning' | 'publishing_rules' | null>(null);
 
@@ -322,18 +339,27 @@ export default function App() {
   // Filtered listings
   const filteredListings = useMemo(() => {
     return listings.filter((item) => {
-      // Category filter
-      if (selectedCategoryId && item.categoryId !== selectedCategoryId) {
-        return false;
+      // 1. Only show ACTIVE or premium listings in public feed (exclude DRAFT and ENDED)
+      const isActive = item.status === 'active' || item.status === 'ACTIVE' || item.status === 'premium' || (item.status as any) === 'PREMIUM';
+      if (!isActive) return false;
+
+      // Category filter (Main Category)
+      if (selectedCategoryId) {
+        const itemCat = item.categoryId || (item as any).category_id || (item as any).main_category_id;
+        if (itemCat !== selectedCategoryId) return false;
       }
+
       // Subcategory filter
-      if (selectedSubCategoryId && item.subCategoryId !== selectedSubCategoryId) {
-        return false;
+      if (selectedSubCategoryId) {
+        const itemSub = item.subCategoryId || (item as any).sub_category_id;
+        if (itemSub !== selectedSubCategoryId) return false;
       }
+
       // Region filter
       if (selectedRegion && item.regionId !== selectedRegion.id) {
         return false;
       }
+
       // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
@@ -342,6 +368,7 @@ export default function App() {
         const matchesCat = item.categoryNameAr.toLowerCase().includes(q) || item.subCategoryNameAr.toLowerCase().includes(q);
         if (!matchesTitle && !matchesDesc && !matchesCat) return false;
       }
+
       // Tab filter
       if (filterTab === 'premium' && item.status !== 'premium') {
         return false;
@@ -349,8 +376,10 @@ export default function App() {
       return true;
     }).sort((a, b) => {
       // 1. Featured / Premium listings ALWAYS rank #1 at the top in category listings & searches
-      if (a.status === 'premium' && b.status !== 'premium') return -1;
-      if (b.status === 'premium' && a.status !== 'premium') return 1;
+      const isAPremium = a.status === 'premium' || (a.status as any) === 'PREMIUM';
+      const isBPremium = b.status === 'premium' || (b.status as any) === 'PREMIUM';
+      if (isAPremium && !isBPremium) return -1;
+      if (isBPremium && !isAPremium) return 1;
 
       // 2. Secondary sorts
       if (filterTab === 'price_low') {
@@ -419,6 +448,8 @@ export default function App() {
         onOpenRules={() => setWarningType('publishing_rules')}
         isDarkMode={isDarkMode}
         onToggleDarkMode={handleToggleDarkMode}
+        onSync={handleSync}
+        isSyncing={isSyncing}
       />
 
       {/* Main Container */}

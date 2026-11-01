@@ -141,7 +141,7 @@ export const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
               <span className="text-slate-500">{isAr ? 'حالة التوثيق:' : 'Verification:'}</span>
               <span className="text-emerald-700 font-bold flex items-center gap-1">
                 <Shield size={12} />
-                <span>{currentUser.isVerified ? (isAr ? 'موثق عبر رقم الهاتف (+967)' : 'Phone Verified (+967)') : (isAr ? 'غير موثق' : 'Unverified')}</span>
+                <span>{currentUser.isVerified ? (isAr ? 'مشترك عبر رقم الهاتف (+967)' : 'Phone Verified (+967)') : (isAr ? 'غير مشترك' : 'Unverified')}</span>
               </span>
             </div>
           </div>
@@ -202,11 +202,10 @@ export const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
               <button
                 type="button"
                 onClick={() => setAccountType('individual')}
-                className={`p-3 rounded-xl border text-right transition-all flex flex-col justify-between ${
-                  accountType === 'individual'
+                className={`p-3 rounded-xl border text-right transition-all flex flex-col justify-between ${accountType === 'individual'
                     ? 'bg-[#68142c] text-white border-[#68142c] shadow-sm ring-2 ring-[#68142c]/30'
                     : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                }`}
+                  }`}
               >
                 <div className="font-bold text-xs">
                   {isAr ? 'مهني / عامل / باحث' : 'Worker / Talent'}
@@ -219,11 +218,10 @@ export const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
               <button
                 type="button"
                 onClick={() => setAccountType('company')}
-                className={`p-3 rounded-xl border text-right transition-all flex flex-col justify-between ${
-                  accountType === 'company'
+                className={`p-3 rounded-xl border text-right transition-all flex flex-col justify-between ${accountType === 'company'
                     ? 'bg-[#68142c] text-white border-[#68142c] shadow-sm ring-2 ring-[#68142c]/30'
                     : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                }`}
+                  }`}
               >
                 <div className="font-bold text-xs">
                   {isAr ? 'مالك عمل / شركة' : 'Business / Employer'}

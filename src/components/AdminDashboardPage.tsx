@@ -870,7 +870,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                                   : 'bg-slate-700 text-slate-300'
                               }`}
                           >
-                            {l.status === 'premium' && (isAr ? 'مميز ★' : 'Featured')}
+                            {l.status === 'premium' && (isAr ? ' ★' : 'Featured')}
                             {l.status === 'active' && (isAr ? 'نشط' : 'Active')}
                             {l.status === 'pending' && (isAr ? 'معلق' : 'Pending')}
                             {l.status === 'expired' && (isAr ? 'منتهي' : 'Expired')}
@@ -899,6 +899,26 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                               <Edit size={13} />
                               <span>{isAr ? 'تعديل' : 'Edit'}</span>
                             </button>
+
+                            {/* End Ad Button (إنهاء الإعلان) */}
+                            {l.status !== 'ended' && (l.status as any) !== 'ENDED' ? (
+                              <button
+                                onClick={() => {
+                                  if (window.confirm(isAr ? `هل ترغب في إنهاء الإعلان: "${l.title}"؟ سيتم تحويل حالته إلى منتهي (ENDED) وإيقاف ظهوره للزوار.` : 'End this ad?')) {
+                                    apiService.updateListingStatus(l.id, 'ENDED');
+                                    onUpdateListing({ ...l, status: 'ENDED' as any });
+                                  }
+                                }}
+                                className="px-2 py-1.5 rounded-lg bg-purple-500/20 hover:bg-purple-500/40 text-purple-300 font-bold text-[11px] flex items-center gap-1 transition-all"
+                                title={isAr ? 'إنهاء الإعلان' : 'End Ad'}
+                              >
+                                <span>{isAr ? 'إنهاء الإعلان' : 'End Ad'}</span>
+                              </button>
+                            ) : (
+                              <span className="px-2 py-1 rounded bg-slate-800 text-slate-500 text-[10px] font-bold">
+                                {isAr ? 'منتهي (ENDED)' : 'Ended'}
+                              </span>
+                            )}
 
                             {/* Delete Button */}
                             <button
@@ -1281,7 +1301,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                     <td className="p-3.5">
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-400/20 text-amber-300">Super Admin</span>
                     </td>
-                    <td className="p-3.5 text-center text-emerald-400 font-bold">✓ {isAr ? 'موثق' : 'Verified'}</td>
+                    <td className="p-3.5 text-center text-emerald-400 font-bold">✓ {isAr ? 'مشترك' : 'Verified'}</td>
                   </tr>
                   <tr>
                     <td className="p-3.5 font-semibold text-white">حمزة الشيف اليمني</td>
@@ -1290,7 +1310,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                     <td className="p-3.5">
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300">{isAr ? 'معلن' : 'Advertiser'}</span>
                     </td>
-                    <td className="p-3.5 text-center text-emerald-400 font-bold">✓ {isAr ? 'موثق (+967)' : 'Verified'}</td>
+                    <td className="p-3.5 text-center text-emerald-400 font-bold">✓ {isAr ? 'مشترك (+967)' : 'Verified'}</td>
                   </tr>
                   <tr>
                     <td className="p-3.5 font-semibold text-white">مطاعم الروابي السياحية</td>
@@ -1299,7 +1319,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                     <td className="p-3.5">
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300">{isAr ? 'صاحب عمل' : 'Employer'}</span>
                     </td>
-                    <td className="p-3.5 text-center text-emerald-400 font-bold">✓ {isAr ? 'موثق' : 'Verified'}</td>
+                    <td className="p-3.5 text-center text-emerald-400 font-bold">✓ {isAr ? 'مشترك' : 'Verified'}</td>
                   </tr>
                 </tbody>
               </table>
