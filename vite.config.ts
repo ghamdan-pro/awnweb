@@ -2,7 +2,7 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { defineConfig, Plugin } from 'vite';
-import apiApp from './server/app';
+import apiApp from './server/app.ts';
 
 const awnApiPlugin = (): Plugin => ({
   name: 'awn-api-server',
@@ -16,7 +16,7 @@ export default defineConfig(() => {
     plugins: [react(), tailwindcss(), awnApiPlugin()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(import.meta.dirname, '.'),
       },
     },
     server: {

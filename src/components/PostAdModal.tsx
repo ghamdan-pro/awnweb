@@ -20,6 +20,7 @@ import { Listing, ListingSectionType } from '../data/mockListings';
 import { AuthUser } from '../types/auth';
 import { apiService } from '../services/apiService';
 import { moderateAdContent } from '../utils/contentModeration';
+import { API_CONFIG } from '../config/apiConfig';
 
 interface PostAdModalProps {
   isOpen: boolean;
@@ -36,6 +37,48 @@ interface PostAdModalProps {
   onUpdateUser?: (updated: AuthUser) => void;
   categories?: Category[];
 }
+
+const uploadImageToSupabase = async (file: File): Promise<string> => {
+  const originalName = (file.name || 'listing-image').trim();
+  const extension = originalName.includes('.')
+    ? originalName.split('.').pop()?.toLowerCase() || 'jpg'
+    : 'jpg';
+
+  const safeName = originalName
+    .replace(/[^a-zA-Z0-9_.-]/g, '_')
+    .replace(/_+/g, '_');
+
+  const objectKey = `${Date.now()}_${safeName || `listing_${Date.now()}.${extension}`}`;
+  const mimeType =
+    extension === 'png'
+      ? 'image/png'
+      : extension === 'webp'
+      ? 'image/webp'
+      : extension === 'gif'
+      ? 'image/gif'
+      : 'image/jpeg';
+
+  const response = await fetch(
+    `${API_CONFIG.SUPABASE_URL}/storage/v1/object/images/${objectKey}`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${API_CONFIG.SUPABASE_ANON_KEY}`,
+        apikey: API_CONFIG.SUPABASE_ANON_KEY,
+        'x-upsert': 'true',
+        'Content-Type': mimeType,
+      },
+      body: file,
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`فشل رفع الصورة إلى Supabase: ${errorText || response.statusText}`);
+  }
+
+  return `${API_CONFIG.SUPABASE_URL}/storage/v1/object/public/images/${objectKey}`;
+};
 
 export const PostAdModal: React.FC<PostAdModalProps> = ({
   isOpen,
@@ -155,24 +198,45 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
   };
 
   // Direct Camera / Gallery Image Upload (Converts file to base64 Data URL)
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
+
     const remainingSlots = 5 - uploadedImages.length;
     if (remainingSlots <= 0) return;
 
-    Array.from(files).slice(0, remainingSlots).forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setUploadedImages((prev) => {
-            if (prev.length >= 5) return prev;
-            return [...prev, event.target!.result as string];
-          });
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+    const selectedFiles = Array.from(files).slice(0, remainingSlots);
+
+    try {
+      const uploadedUrls = await Promise.all(
+        selectedFiles.map(async (file) => {
+          try {
+            return await uploadImageToSupabase(file);
+          } catch (uploadError) {
+            const fallbackUrl = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(String(reader.result ?? ''));
+              reader.onerror = () => reject(uploadError);
+              reader.readAsDataURL(file);
+            });
+            return fallbackUrl;
+          }
+        })
+      );
+
+      setUploadedImages((prev) => [...prev, ...uploadedUrls]);
+      setSuccessNotice(
+        isAr
+          ? 'تم رفع الصور بنجاح واتباعها في الإعلان.'
+          : 'Images uploaded successfully and attached to the ad.'
+      );
+      setTimeout(() => setSuccessNotice(null), 3000);
+    } catch (error: any) {
+      setErrorNotice(
+        error?.message ||
+          (isAr ? 'فشل رفع الصور، يرجى المحاولة مرة أخرى.' : 'Failed to upload images. Please try again.')
+      );
+    }
 
     if (e.target) e.target.value = '';
   };
@@ -269,6 +333,12 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
         isPrimary: i === 0,
         orderWeight: i,
       })),
+      mediaUrls: uploadedImages,
+      metadata: {
+        ...(payload as any)?.metadata,
+        mediaUrls: uploadedImages,
+        sectionType: adType === 'REQUEST' ? 'worker_profiles' : 'job_vacancies',
+      },
       price: null,
       currency: 'YER',
       priceNegotiable: true,

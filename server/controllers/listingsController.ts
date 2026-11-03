@@ -317,9 +317,8 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
     } else if (isProhibited) {
       finalStatus = 'rejected';
     } else {
-      // Instant automated verification success -> ACTIVE!
-      finalStatus = 'ACTIVE';
-      publishedAt = new Date().toISOString();
+      finalStatus = 'pending';
+      publishedAt = null;
     }
 
     // Resolve valid city_id and cityName for Supabase foreign key
