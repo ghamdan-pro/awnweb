@@ -403,6 +403,25 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
 
       if (!error && data) {
         insertedListing = data;
+
+        if (!isDraft && !isProhibited) {
+          const autoApproveAt = new Date().toISOString();
+          const { data: approvedData, error: approvalError } = await supabase
+            .from('listings')
+            .update({
+              status: 'active',
+              published_at: autoApproveAt,
+            })
+            .eq('id', insertedListing.id)
+            .select()
+            .single();
+
+          if (!approvalError && approvedData) {
+            insertedListing = { ...insertedListing, ...approvedData, status: 'active', published_at: autoApproveAt };
+          } else {
+            insertedListing = { ...insertedListing, status: 'active', published_at: autoApproveAt };
+          }
+        }
       } else if (error) {
         console.error('❌ [Supabase createListing Error]:', error.message, error.details, error.hint, error.code);
       }
@@ -412,6 +431,7 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
 
     // In case DB failed or not ready
     if (!insertedListing) {
+      const fallbackStatus = isDraft ? 'DRAFT' : isProhibited ? 'rejected' : 'active';
       insertedListing = {
         id: (isDraft ? 'draft-' : 'user-ad-') + Date.now(),
         title: derivedTitle,
@@ -429,8 +449,8 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
         regionId: finalRegionId,
         cityId: validCityId,
         cityNameAr: validCityName,
-        status: finalStatus,
-        publishedAt,
+        status: fallbackStatus,
+        publishedAt: isDraft ? null : new Date().toISOString(),
         purpose,
         sharePhone: finalSharePhone,
         creatorPhone: finalSharePhone ? finalContactPhone : null,
@@ -455,13 +475,18 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
       FALLBACK_LISTINGS.unshift(insertedListing);
     }
 
+    const effectiveStatus = String(insertedListing?.status ?? finalStatus).toLowerCase();
+    const responseMessage = isDraft
+      ? 'تم حفظ الإعلان في المسودات بنجاح'
+      : isProhibited
+        ? 'تم فحص الإعلان وتم رفضه لعدم مطابقته لشروط النشر.'
+        : effectiveStatus === 'active'
+          ? 'تم استلام الإعلان بنجاح وهو منشور الآن ومتاح للمستخدمين.'
+          : 'تم استلام الإعلان بنجاح وهو الآن قيد المراجعة ثم يتم النشر تلقائياً إذا كان مطابقاً.';
+
     res.status(201).json({
       success: true,
-      message: isDraft
-        ? 'تم حفظ الإعلان في المسودات بنجاح'
-        : finalStatus === 'pending'
-            ? 'تم استلام الإعلان بنجاح وهو الآن قيد الموافقة والاعتماد'
-            : 'تم فحص وقبول الإعلان ونشره بنجاح',
+      message: responseMessage,
       data: insertedListing,
     });
   } catch (error: any) {
