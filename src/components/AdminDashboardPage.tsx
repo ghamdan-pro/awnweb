@@ -380,6 +380,94 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     } catch (e) { }
   };
 
+  // إدارة الإعلانات التجارية والإشعارات ومزامنتها مع تطبيق الموبايل
+  const handleSaveCommercialAll = async () => {
+    setIsCommercialSyncing(true);
+    setCommercialSyncMsg(null);
+    try {
+      localStorage.setItem('awn_commercial_banners', JSON.stringify(commercialBanners));
+      localStorage.setItem('awn_commercial_tickers', JSON.stringify(commercialTickers));
+      await apiService.saveCommercialBanners(commercialBanners);
+      await apiService.saveCommercialTickers(commercialTickers);
+      setCommercialSyncMsg(isAr ? 'تم الحفظ والمزامنة بنجاح مع تطبيق الموبايل مباشرة 📲✨' : 'Saved & synced to mobile successfully!');
+      setTimeout(() => setCommercialSyncMsg(null), 4000);
+    } catch (_) {
+      setCommercialSyncMsg(isAr ? 'تم الحفظ محلياً وجاهز للمزامنة' : 'Saved locally');
+    } finally {
+      setIsCommercialSyncing(false);
+    }
+  };
+
+  const handleToggleBannerActive = (id: string) => {
+    const updated = commercialBanners.map(b => b.id === id ? { ...b, isActive: !b.isActive } : b);
+    setCommercialBanners(updated);
+    localStorage.setItem('awn_commercial_banners', JSON.stringify(updated));
+    apiService.saveCommercialBanners(updated).catch(() => {});
+  };
+
+  const handleDeleteBanner = (id: string) => {
+    if (!window.confirm(isAr ? 'هل أنت متأكد من حذف هذا البانر التجاري؟' : 'Delete this banner?')) return;
+    const updated = commercialBanners.filter(b => b.id !== id);
+    setCommercialBanners(updated);
+    localStorage.setItem('awn_commercial_banners', JSON.stringify(updated));
+    apiService.saveCommercialBanners(updated).catch(() => {});
+  };
+
+  const handleSaveBanner = (bannerData: any) => {
+    let updated: any[];
+    if (editingBanner && editingBanner.id) {
+      updated = commercialBanners.map(b => b.id === editingBanner.id ? { ...b, ...bannerData } : b);
+    } else {
+      const newBanner = {
+        ...bannerData,
+        id: `banner-${Date.now()}`,
+        isActive: true,
+        order: commercialBanners.length + 1,
+      };
+      updated = [...commercialBanners, newBanner];
+    }
+    setCommercialBanners(updated);
+    localStorage.setItem('awn_commercial_banners', JSON.stringify(updated));
+    apiService.saveCommercialBanners(updated).catch(() => {});
+    setIsBannerModalOpen(false);
+    setEditingBanner(null);
+  };
+
+  const handleToggleTickerActive = (id: string) => {
+    const updated = commercialTickers.map(t => t.id === id ? { ...t, isActive: !t.isActive } : t);
+    setCommercialTickers(updated);
+    localStorage.setItem('awn_commercial_tickers', JSON.stringify(updated));
+    apiService.saveCommercialTickers(updated).catch(() => {});
+  };
+
+  const handleDeleteTicker = (id: string) => {
+    if (!window.confirm(isAr ? 'هل أنت متأكد من حذف هذا الإشعار النصي؟' : 'Delete this ticker notice?')) return;
+    const updated = commercialTickers.filter(t => t.id !== id);
+    setCommercialTickers(updated);
+    localStorage.setItem('awn_commercial_tickers', JSON.stringify(updated));
+    apiService.saveCommercialTickers(updated).catch(() => {});
+  };
+
+  const handleSaveTicker = (tickerData: any) => {
+    let updated: any[];
+    if (editingTicker && editingTicker.id) {
+      updated = commercialTickers.map(t => t.id === editingTicker.id ? { ...t, ...tickerData } : t);
+    } else {
+      const newTicker = {
+        ...tickerData,
+        id: `tick-${Date.now()}`,
+        isActive: true,
+        order: commercialTickers.length + 1,
+      };
+      updated = [...commercialTickers, newTicker];
+    }
+    setCommercialTickers(updated);
+    localStorage.setItem('awn_commercial_tickers', JSON.stringify(updated));
+    apiService.saveCommercialTickers(updated).catch(() => {});
+    setIsTickerModalOpen(false);
+    setEditingTicker(null);
+  };
+
   // تأكيد إيقاف/حظر المعرّف مع بيان السبب
   const handleConfirmSuspension = () => {
     if (!suspensionModalTarget) return;
@@ -1516,6 +1604,309 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
           </div>
         )}
 
+        {/* TAB: Commercial Ads & Moving Tickers (Live Sync to Mobile) */}
+        {activeTab === 'commercial' && (
+          <div className="space-y-6">
+            {/* Header with Live Mobile Sync & Notification Bar */}
+            <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-lg">
+              <div>
+                <div className="flex items-center gap-2.5 mb-1">
+                  <div className="p-2 bg-gradient-to-br from-amber-500 to-amber-600 text-slate-950 rounded-xl shadow-md">
+                    <Megaphone size={20} />
+                  </div>
+                  <h3 className="text-lg font-black text-white">
+                    {isAr ? 'إدارة الإعلانات التجارية والإشعارات المتحركة' : 'Commercial Ads & Live Mobile Tickers'}
+                  </h3>
+                  <span className="px-2 py-0.5 text-xs font-bold bg-amber-500/20 text-amber-300 rounded-full border border-amber-500/30">
+                    {isAr ? 'مزامنة مباشرة مع الموبايل 📲' : 'Live Mobile Sync'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400">
+                  {isAr
+                    ? 'يتم تحديث وعكس هذه الإعلانات والبانرات فورياً في تطبيق الموبايل أعلى القوائم الرئيسية.'
+                    : 'Changes here are pushed and synced instantly to the mobile app top banner & rolling ticker.'}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                {commercialSyncMsg && (
+                  <span className="text-xs font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-3 py-1.5 rounded-xl animate-pulse">
+                    {commercialSyncMsg}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={handleSaveCommercialAll}
+                  disabled={isCommercialSyncing}
+                  className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-xl text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  <Save size={16} />
+                  <span>
+                    {isCommercialSyncing
+                      ? (isAr ? 'جارِ المزامنة...' : 'Syncing...')
+                      : (isAr ? 'حفظ ومزامنة مع الموبايل الآن 📲' : 'Save & Sync to Mobile Now')}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Mobile Simulation Preview Card */}
+            <div className="bg-slate-900/90 p-5 rounded-2xl border border-amber-500/20 shadow-md space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Smartphone size={16} className="text-amber-400" />
+                  <span className="text-xs font-bold text-amber-300">
+                    {isAr ? 'معاينة حية لما يشاهده المستخدم داخل تطبيق الموبايل' : 'Live Preview inside Mobile App'}
+                  </span>
+                </div>
+                <span className="text-[11px] text-slate-400">
+                  {isAr ? 'الموقع: أعلى شاشة الأقسام والقوائم' : 'Placement: Top of Category Hub'}
+                </span>
+              </div>
+
+              {/* Ticker simulation */}
+              <div className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 flex items-center gap-2 overflow-hidden">
+                <div className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-500 text-slate-950 flex items-center gap-1 shrink-0">
+                  <Radio size={10} className="animate-pulse" />
+                  <span>{isAr ? 'شريط متحرك' : 'Ticker'}</span>
+                </div>
+                <div className="text-xs text-amber-200 truncate font-medium">
+                  {commercialTickers.find(t => t.isActive)?.text || (isAr ? 'لا توجد إشعارات نشطة حالياً' : 'No active tickers')}
+                </div>
+              </div>
+
+              {/* Banner slider simulation */}
+              {commercialBanners.filter(b => b.isActive).length > 0 && (
+                <div
+                  className="p-4 rounded-xl text-white shadow-md relative overflow-hidden"
+                  style={{
+                    background: `linear-gradient(135deg, ${commercialBanners.find(b => b.isActive)?.gradientStart || '#68142C'}, ${commercialBanners.find(b => b.isActive)?.gradientEnd || '#991B1B'})`,
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span
+                      className="text-[10px] font-black px-2 py-0.5 rounded-full text-slate-950"
+                      style={{ backgroundColor: commercialBanners.find(b => b.isActive)?.badgeColor || '#F59E0B' }}
+                    >
+                      {commercialBanners.find(b => b.isActive)?.tag || 'إعلان تجاري'}
+                    </span>
+                    <span className="text-[11px] text-white/80">
+                      📍 {commercialBanners.find(b => b.isActive)?.location || 'اليمن'}
+                    </span>
+                  </div>
+                  <h4 className="text-base font-bold text-white mb-1">
+                    {commercialBanners.find(b => b.isActive)?.title}
+                  </h4>
+                  <p className="text-xs text-white/85 line-clamp-1 mb-3">
+                    {commercialBanners.find(b => b.isActive)?.subtitle}
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-white/70">
+                      📞 {commercialBanners.find(b => b.isActive)?.contactPhone}
+                    </span>
+                    <span className="px-3 py-1 bg-white/20 border border-white/30 rounded-lg text-xs font-bold text-white">
+                      {commercialBanners.find(b => b.isActive)?.buttonText || 'تواصل'}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Section A: Commercial Banners Management */}
+            <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-md space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Tv size={18} className="text-amber-400" />
+                  <h4 className="font-bold text-white text-base">
+                    {isAr ? 'البانرات الإعلانية المتحركة (Commercial Banners)' : 'Commercial Banners Slider'}
+                  </h4>
+                  <span className="text-xs px-2 py-0.5 bg-slate-800 text-slate-300 rounded-full font-mono">
+                    {commercialBanners.length}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingBanner({
+                      id: '',
+                      tag: 'إعلان تجاري مميز',
+                      location: 'صنعاء - عدن',
+                      title: '',
+                      subtitle: '',
+                      icon: 'business',
+                      gradientStart: '#68142C',
+                      gradientEnd: '#991B1B',
+                      badgeColor: '#F59E0B',
+                      buttonText: 'تواصل 📞',
+                      actionType: 'contact',
+                      contactName: '',
+                      contactPhone: '+967 777 000 000',
+                    });
+                    setIsBannerModalOpen(true);
+                  }}
+                  className="px-3.5 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all"
+                >
+                  <Plus size={14} />
+                  <span>{isAr ? 'إضافة بانر جديد' : 'Add Banner'}</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {commercialBanners.map((banner) => (
+                  <div
+                    key={banner.id}
+                    className={`p-4 rounded-xl border transition-all ${
+                      banner.isActive
+                        ? 'bg-slate-800/80 border-slate-700'
+                        : 'bg-slate-900/50 border-slate-800 opacity-60'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="w-3 h-3 rounded-full shrink-0"
+                          style={{ backgroundColor: banner.badgeColor || '#F59E0B' }}
+                        />
+                        <span className="text-xs font-bold text-amber-400 px-2 py-0.5 bg-amber-500/10 rounded-md">
+                          {banner.tag}
+                        </span>
+                        <span className="text-[11px] text-slate-400">
+                          {banner.location}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleBannerActive(banner.id)}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${
+                            banner.isActive
+                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                              : 'bg-slate-700 text-slate-400'
+                          }`}
+                        >
+                          {banner.isActive ? (isAr ? 'نشط' : 'Active') : (isAr ? 'معطل' : 'Paused')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingBanner({ ...banner });
+                            setIsBannerModalOpen(true);
+                          }}
+                          className="p-1.5 bg-slate-700/80 hover:bg-slate-700 text-slate-200 rounded-lg text-xs"
+                          title="تعديل"
+                        >
+                          <Edit size={12} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteBanner(banner.id)}
+                          className="p-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 rounded-lg text-xs"
+                          title="حذف"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <h5 className="font-bold text-white text-sm mb-1">{banner.title}</h5>
+                    <p className="text-xs text-slate-300 line-clamp-1 mb-2">{banner.subtitle}</p>
+
+                    <div className="pt-2 border-t border-slate-700/60 flex items-center justify-between text-[11px] text-slate-400">
+                      <span>📞 {banner.contactPhone || 'غير محدد'}</span>
+                      <span className="font-mono text-[10px] text-slate-500">
+                        {banner.gradientStart} ➔ {banner.gradientEnd}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Section B: Moving Text Ticker Notifications */}
+            <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-md space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Radio size={18} className="text-amber-400" />
+                  <h4 className="font-bold text-white text-base">
+                    {isAr ? 'شريط الإشعارات المتحركة (Moving Text Tickers)' : 'Moving Text Marquee Tickers'}
+                  </h4>
+                  <span className="text-xs px-2 py-0.5 bg-slate-800 text-slate-300 rounded-full font-mono">
+                    {commercialTickers.length}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingTicker({
+                      id: '',
+                      text: '',
+                      tag: 'إشعار تجاري',
+                    });
+                    setIsTickerModalOpen(true);
+                  }}
+                  className="px-3.5 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all"
+                >
+                  <Plus size={14} />
+                  <span>{isAr ? 'إضافة إشعار متحرك' : 'Add Ticker'}</span>
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {commercialTickers.map((ticker) => (
+                  <div
+                    key={ticker.id}
+                    className={`p-3 rounded-xl border flex items-center justify-between gap-3 transition-all ${
+                      ticker.isActive
+                        ? 'bg-slate-800/80 border-slate-700'
+                        : 'bg-slate-900/50 border-slate-800 opacity-60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 shrink-0">
+                        {ticker.tag || 'إشعار'}
+                      </span>
+                      <p className="text-xs text-white truncate flex-1 font-medium">{ticker.text}</p>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleTickerActive(ticker.id)}
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${
+                          ticker.isActive
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                            : 'bg-slate-700 text-slate-400'
+                        }`}
+                      >
+                        {ticker.isActive ? (isAr ? 'نشط' : 'Active') : (isAr ? 'معطل' : 'Paused')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingTicker({ ...ticker });
+                          setIsTickerModalOpen(true);
+                        }}
+                        className="p-1.5 bg-slate-700/80 hover:bg-slate-700 text-slate-200 rounded-lg text-xs"
+                        title="تعديل"
+                      >
+                        <Edit size={12} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteTicker(ticker.id)}
+                        className="p-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 rounded-lg text-xs"
+                        title="حذف"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* TAB 4: Users & Admin Password Security */}
         {activeTab === 'users' && (
           <div className="space-y-6">
@@ -2411,6 +2802,255 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 >
                   <Plus size={15} />
                   <span>{isAr ? 'إضافة وتثبيت' : 'Add Subcategory'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* MODAL: Edit/Add Commercial Banner */}
+      {isBannerModalOpen && editingBanner && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h3 className="font-bold text-white text-base flex items-center gap-2">
+                <Tv size={18} className="text-amber-400" />
+                <span>
+                  {editingBanner.id
+                    ? (isAr ? 'تعديل البانر التجاري' : 'Edit Commercial Banner')
+                    : (isAr ? 'إضافة بانر تجاري جديد' : 'New Commercial Banner')}
+                </span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsBannerModalOpen(false)}
+                className="text-slate-400 hover:text-white"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSaveBanner(editingBanner);
+              }}
+              className="space-y-3"
+            >
+              <div>
+                <label className="text-xs text-slate-300 block mb-1">
+                  {isAr ? 'عنوان البانر الرئيسي *' : 'Banner Title *'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editingBanner.title || ''}
+                  onChange={(e) => setEditingBanner({ ...editingBanner, title: e.target.value })}
+                  placeholder="مثال: شركة الرواد للتجارة والاستيراد"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-slate-300 block mb-1">
+                  {isAr ? 'الوصف والتفاصيل *' : 'Subtitle / Description *'}
+                </label>
+                <textarea
+                  rows={2}
+                  required
+                  value={editingBanner.subtitle || ''}
+                  onChange={(e) => setEditingBanner({ ...editingBanner, subtitle: e.target.value })}
+                  placeholder="مثال: خصومات وتوريدات جملة لكافة المحافظات"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-slate-300 block mb-1">
+                    {isAr ? 'الشريط التمييزي (Tag)' : 'Badge Tag'}
+                  </label>
+                  <input
+                    type="text"
+                    value={editingBanner.tag || ''}
+                    onChange={(e) => setEditingBanner({ ...editingBanner, tag: e.target.value })}
+                    placeholder="إعلان تجاري مميز"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-300 block mb-1">
+                    {isAr ? 'الموقع / المحافظة' : 'Location'}
+                  </label>
+                  <input
+                    type="text"
+                    value={editingBanner.location || ''}
+                    onChange={(e) => setEditingBanner({ ...editingBanner, location: e.target.value })}
+                    placeholder="صنعاء - عدن"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-slate-300 block mb-1">
+                    {isAr ? 'رقم الهاتف للتواصل' : 'Phone'}
+                  </label>
+                  <input
+                    type="text"
+                    value={editingBanner.contactPhone || ''}
+                    onChange={(e) => setEditingBanner({ ...editingBanner, contactPhone: e.target.value })}
+                    placeholder="+967 777 000 000"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white text-sm font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-300 block mb-1">
+                    {isAr ? 'نص الزر' : 'Button Text'}
+                  </label>
+                  <input
+                    type="text"
+                    value={editingBanner.buttonText || ''}
+                    onChange={(e) => setEditingBanner({ ...editingBanner, buttonText: e.target.value })}
+                    placeholder="تواصل 📞"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-slate-300 block mb-1">
+                    {isAr ? 'بداية التدرج اللوني' : 'Gradient Start'}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={editingBanner.gradientStart || '#68142C'}
+                      onChange={(e) => setEditingBanner({ ...editingBanner, gradientStart: e.target.value })}
+                      className="w-9 h-9 rounded-lg bg-transparent border-0 cursor-pointer"
+                    />
+                    <input
+                      type="text"
+                      value={editingBanner.gradientStart || '#68142C'}
+                      onChange={(e) => setEditingBanner({ ...editingBanner, gradientStart: e.target.value })}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-white text-xs font-mono"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-300 block mb-1">
+                    {isAr ? 'نهاية التدرج اللوني' : 'Gradient End'}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={editingBanner.gradientEnd || '#991B1B'}
+                      onChange={(e) => setEditingBanner({ ...editingBanner, gradientEnd: e.target.value })}
+                      className="w-9 h-9 rounded-lg bg-transparent border-0 cursor-pointer"
+                    />
+                    <input
+                      type="text"
+                      value={editingBanner.gradientEnd || '#991B1B'}
+                      onChange={(e) => setEditingBanner({ ...editingBanner, gradientEnd: e.target.value })}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-white text-xs font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsBannerModalOpen(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs"
+                >
+                  {isAr ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl text-xs shadow-md active:scale-95 flex items-center gap-1.5"
+                >
+                  <Save size={14} />
+                  <span>{isAr ? 'حفظ وتثبيت' : 'Save Banner'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Edit/Add Commercial Ticker */}
+      {isTickerModalOpen && editingTicker && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h3 className="font-bold text-white text-base flex items-center gap-2">
+                <Radio size={18} className="text-amber-400" />
+                <span>
+                  {editingTicker.id
+                    ? (isAr ? 'تعديل الإشعار النصي المتحرك' : 'Edit Marquee Ticker')
+                    : (isAr ? 'إضافة إشعار نصي متحرك جديد' : 'New Marquee Ticker')}
+                </span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsTickerModalOpen(false)}
+                className="text-slate-400 hover:text-white"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSaveTicker(editingTicker);
+              }}
+              className="space-y-3"
+            >
+              <div>
+                <label className="text-xs text-slate-300 block mb-1">
+                  {isAr ? 'تصنيف الإشعار (Badge)' : 'Ticker Tag'}
+                </label>
+                <input
+                  type="text"
+                  value={editingTicker.tag || ''}
+                  onChange={(e) => setEditingTicker({ ...editingTicker, tag: e.target.value })}
+                  placeholder="إشعار تجاري / عرض خاص / وظائف"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-slate-300 block mb-1">
+                  {isAr ? 'نص الإشعار المتحرك كاملاً *' : 'Ticker Text *'}
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  value={editingTicker.text || ''}
+                  onChange={(e) => setEditingTicker({ ...editingTicker, text: e.target.value })}
+                  placeholder="اكتب نص الإعلان أو الإشعار الذي سيتحرك من اليمين لليسار في التطبيق..."
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsTickerModalOpen(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs"
+                >
+                  {isAr ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl text-xs shadow-md active:scale-95 flex items-center gap-1.5"
+                >
+                  <Save size={14} />
+                  <span>{isAr ? 'حفظ وتثبيت' : 'Save Ticker'}</span>
                 </button>
               </div>
             </form>
