@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Phone, MessageCircle, Bookmark, Star, ShieldCheck, Clock, Lock } from 'lucide-react';
+import { MapPin, Bookmark, Star, Clock, Smartphone } from 'lucide-react';
 import { Listing } from '../data/mockListings';
 import { AuthUser } from '../types/auth';
 
@@ -14,42 +14,16 @@ interface ListingCardProps {
 
 export const ListingCard: React.FC<ListingCardProps> = ({
   listing,
-  currentUser,
   onOpenDetails,
-  onRequireLogin,
   onToggleBookmark,
   lang,
 }) => {
   const isAr = lang === 'ar';
   const primaryMedia = listing.media.find((m) => m.isPrimary) || listing.media[0];
 
+  // في منصة الويب: الإعلانات متاحة للاستعراض الحر دون إجبار على تسجيل الدخول
   const handleCardClick = () => {
-    if (!currentUser) {
-      onRequireLogin(listing, 'details');
-    } else {
-      onOpenDetails(listing);
-    }
-  };
-
-  const handleCall = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!currentUser) {
-      onRequireLogin(listing, 'contact');
-      return;
-    }
-    window.location.href = `tel:${listing.contactPhone.replace(/\s+/g, '')}`;
-  };
-
-  const handleWhatsApp = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!currentUser) {
-      onRequireLogin(listing, 'contact');
-      return;
-    }
-    if (!listing.whatsappNumber) return;
-    const cleanNumber = listing.whatsappNumber.replace(/[^0-9]/g, '');
-    const text = encodeURIComponent(`مرحباً، بخصوص إعلانك على عون يمن: "${listing.title}"`);
-    window.open(`https://wa.me/${cleanNumber}?text=${text}`, '_blank');
+    onOpenDetails(listing);
   };
 
   return (
@@ -61,7 +35,6 @@ export const ListingCard: React.FC<ListingCardProps> = ({
           : 'border-slate-200/90 shadow-xs hover:shadow-md'
       }`}
     >
-
       {/* Thumbnail */}
       <div className="relative sm:w-52 h-44 sm:h-auto bg-slate-100 shrink-0 overflow-hidden">
         {primaryMedia ? (
@@ -81,7 +54,7 @@ export const ListingCard: React.FC<ListingCardProps> = ({
         {listing.status === 'premium' && (
           <div className="absolute top-2 right-2 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black text-[10px] px-2 py-0.5 rounded shadow-sm flex items-center gap-1">
             <Star size={11} className="fill-slate-950" />
-            <span>{isAr ? 'إعلان مميز' : 'Featured'}</span>
+            <span>{isAr ? 'إعلان مميز ★' : 'Featured ★'}</span>
           </div>
         )}
 
@@ -143,7 +116,7 @@ export const ListingCard: React.FC<ListingCardProps> = ({
           )}
         </div>
 
-        {/* Bottom row: Price, Seller info, Actions */}
+        {/* Bottom row: Price & Fast App Contact Action */}
         <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
           {/* Price */}
           <div>
@@ -171,29 +144,18 @@ export const ListingCard: React.FC<ListingCardProps> = ({
             </div>
           </div>
 
-          {/* Interactive Fast Actions (Call / WhatsApp) */}
+          {/* Fast App Contact Action - في الويب بدون إظهار أرقام الهواتف */}
           <div className="flex items-center gap-1.5">
-            {listing.whatsappNumber && (
-              <button
-                onClick={handleWhatsApp}
-                className="p-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200 transition-colors"
-                title={isAr ? 'مراسلة عبر واتساب' : 'WhatsApp'}
-              >
-                <MessageCircle size={16} />
-              </button>
-            )}
-
             <button
-              onClick={handleCall}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold shadow-xs transition-colors ${
-                !currentUser
-                  ? 'bg-slate-800 hover:bg-slate-900 text-amber-300 border border-slate-700'
-                  : 'bg-[#2e7d32] hover:bg-[#256828] text-white'
-              }`}
-              title={!currentUser ? (isAr ? 'سجل الدخول للاتصال بالمعلن' : 'Login to call seller') : (isAr ? 'اتصال بالمعلن' : 'Call Seller')}
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenDetails(listing);
+              }}
+              className="flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-[#68142c] border border-amber-300 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-2xs"
+              title={isAr ? 'التواصل ورقم الهاتف متاح حصرياً عبر تطبيق عون يمن للجوال' : 'Contact available on Mobile App'}
             >
-              {!currentUser ? <Lock size={12} className="text-amber-400" /> : <Phone size={13} />}
-              <span>{!currentUser ? (isAr ? 'عرض الرقم' : 'Show Phone') : (isAr ? 'اتصال' : 'Call')}</span>
+              <Smartphone size={13} className="text-[#68142c]" />
+              <span>{isAr ? 'تواصل عبر التطبيق' : 'App Contact'}</span>
             </button>
           </div>
         </div>

@@ -70,20 +70,6 @@ export const Header: React.FC<HeaderProps> = ({
             <span>{isAr ? 'لوحة التحكم' : 'Admin Panel'}</span>
           </button>
 
-          {/* Dark Mode toggle */}
-          {onToggleDarkMode && (
-            <button
-              onClick={onToggleDarkMode}
-              className="flex items-center gap-1 text-amber-300 hover:text-amber-100 transition-colors font-medium"
-              title={isDarkMode ? (isAr ? 'التبديل إلى الوضع النهاري' : 'Switch to Light Mode') : (isAr ? 'التبديل إلى الوضع الليلي' : 'Switch to Dark Mode')}
-            >
-              {isDarkMode ? <Sun size={14} className="text-amber-300" /> : <Moon size={14} className="text-slate-200" />}
-              <span className="hidden sm:inline">
-                {isDarkMode ? (isAr ? 'نهاري' : 'Light') : (isAr ? 'ليلي' : 'Dark')}
-              </span>
-            </button>
-          )}
-
           {/* Lang toggle */}
           <button
             onClick={onToggleLang}

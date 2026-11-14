@@ -44,7 +44,10 @@ import {
   ArrowDown,
   Snowflake,
   Pause,
-  Play
+  Play,
+  Ban,
+  AlertOctagon,
+  Copy
 } from 'lucide-react';
 import { Listing } from '../data/mockListings';
 import { CATEGORIES, Category, SubCategory } from '../data/categoriesData';
@@ -132,13 +135,173 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordMsg, setPasswordMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // إدارة كل من أنزل التطبيق (معرّفات ID، زوار الاستعراض، الحسابات المجانية والمميزة، وإيقاف التطبيق مع بيان السبب)
+  const [managedAppUsers, setManagedAppUsers] = useState<Array<{
+    id: string;
+    type: 'visitor' | 'free_user' | 'vip_user';
+    name?: string;
+    phone?: string;
+    accountType: string;
+    deviceModel: string;
+    platform: 'Android' | 'iOS';
+    installDate: string;
+    lastActive: string;
+    status: 'active' | 'suspended';
+    suspensionReason?: string;
+    suspendedAt?: string;
+  }>>(() => {
+    try {
+      const saved = localStorage.getItem('awn_managed_app_users');
+      if (saved) return JSON.parse(saved);
+    } catch (e) { }
+    return [
+      {
+        id: 'AWN-U-49182375',
+        type: 'free_user',
+        name: 'حمزة الشيف اليمني',
+        phone: '+967 777 123 456',
+        accountType: 'شخصي',
+        deviceModel: 'Infinix Note 30',
+        platform: 'Android',
+        installDate: '2026-11-10 08:30',
+        lastActive: 'منذ 25 دقيقة',
+        status: 'active',
+      },
+      {
+        id: 'AWN-U-99001122',
+        type: 'vip_user',
+        name: 'مطاعم الروابي السياحية',
+        phone: '+967 771 888 999',
+        accountType: 'شركات',
+        deviceModel: 'Samsung Galaxy S23 Ultra',
+        platform: 'Android',
+        installDate: '2026-11-09 11:00',
+        lastActive: 'نشط الآن',
+        status: 'active',
+      },
+      {
+        id: 'AWN-V-LM3P9K-7842',
+        type: 'visitor',
+        accountType: 'استعراض كزائر',
+        deviceModel: 'Samsung Galaxy A54',
+        platform: 'Android',
+        installDate: '2026-11-12 10:15',
+        lastActive: 'منذ 10 دقائق',
+        status: 'active',
+      },
+      {
+        id: 'AWN-V-KB9201-1194',
+        type: 'visitor',
+        accountType: 'استعراض كزائر',
+        deviceModel: 'Redmi Note 12',
+        platform: 'Android',
+        installDate: '2026-11-13 14:20',
+        lastActive: 'منذ ساعة',
+        status: 'active',
+      },
+      {
+        id: 'AWN-V-SUSP-7731',
+        type: 'visitor',
+        accountType: 'استعراض كزائر',
+        deviceModel: 'Tecno Spark 10',
+        platform: 'Android',
+        installDate: '2026-11-11 16:45',
+        lastActive: 'منذ يومين',
+        status: 'suspended',
+        suspensionReason: 'نشاط مريب وإرسال بلاغات عشوائية متكررة ضد إعلانات المعلنين',
+        suspendedAt: '2026-11-12',
+      },
+      {
+        id: 'AWN-U-SUSP-5512',
+        type: 'free_user',
+        name: 'مستخدم مخالف للشروط',
+        phone: '+967 773 000 999',
+        accountType: 'شخصي',
+        deviceModel: 'Xiaomi 13T',
+        platform: 'Android',
+        installDate: '2026-11-08 19:10',
+        lastActive: 'منذ 3 أيام',
+        status: 'suspended',
+        suspensionReason: 'مخالفة شروط وقوانين النشر في اليمن - نشر إعلانات مضللة ومحاولة طلب عربون مالي مسبق',
+        suspendedAt: '2026-11-11',
+      },
+    ];
+  });
+
+  // State for user filter & search & suspension dialog
+  const [appUsersFilter, setAppUsersFilter] = useState<'all' | 'visitor' | 'free_user' | 'vip_user' | 'suspended'>('all');
+  const [appUsersSearch, setAppUsersSearch] = useState('');
+  const [suspensionModalTarget, setSuspensionModalTarget] = useState<{ id: string; name?: string; type: string } | null>(null);
+  const [selectedSuspensionReason, setSelectedSuspensionReason] = useState('مخالفة شروط وقوانين النشر في اليمن');
+  const [customSuspensionReason, setCustomSuspensionReason] = useState('');
+
+  // تحويل نوع الاشتراك (بين مجاني ومميز)
+  const handleToggleAppUserVip = (id: string) => {
+    const updated = managedAppUsers.map((u) => {
+      if (u.id === id) {
+        const nextType = u.type === 'vip_user' ? 'free_user' : 'vip_user';
+        return { ...u, type: nextType as any };
+      }
+      return u;
+    });
+    setManagedAppUsers(updated);
+    try {
+      localStorage.setItem('awn_managed_app_users', JSON.stringify(updated));
+    } catch (e) { }
+  };
+
+  // تأكيد إيقاف/حظر المعرّف مع بيان السبب
+  const handleConfirmSuspension = () => {
+    if (!suspensionModalTarget) return;
+    const finalReason = customSuspensionReason.trim()
+      ? customSuspensionReason.trim()
+      : selectedSuspensionReason;
+
+    const updated = managedAppUsers.map((u) => {
+      if (u.id === suspensionModalTarget.id) {
+        return {
+          ...u,
+          status: 'suspended' as const,
+          suspensionReason: finalReason,
+          suspendedAt: new Date().toISOString().split('T')[0],
+        };
+      }
+      return u;
+    });
+    setManagedAppUsers(updated);
+    try {
+      localStorage.setItem('awn_managed_app_users', JSON.stringify(updated));
+    } catch (e) { }
+    setSuspensionModalTarget(null);
+    setCustomSuspensionReason('');
+  };
+
+  // إلغاء الإيقاف وإعادة التفعيل الفوري
+  const handleReactivateAppUser = (id: string) => {
+    const updated = managedAppUsers.map((u) => {
+      if (u.id === id) {
+        return {
+          ...u,
+          status: 'active' as const,
+          suspensionReason: undefined,
+          suspendedAt: undefined,
+        };
+      }
+      return u;
+    });
+    setManagedAppUsers(updated);
+    try {
+      localStorage.setItem('awn_managed_app_users', JSON.stringify(updated));
+    } catch (e) { }
+  };
+
   // Save categories to localStorage & IndexedDB
   const saveCategories = (updated: Category[]) => {
     setCategoriesList(updated);
     try {
       localStorage.setItem('awn_custom_categories', JSON.stringify(updated));
     } catch (e) { }
-    localCacheDb.putCategories(updated).catch(() => {});
+    localCacheDb.putCategories(updated).catch(() => { });
   };
 
   // Load live analytics stats
@@ -168,7 +331,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     setEditTitle(listing.title);
     setEditPrice(listing.price !== null ? String(listing.price) : '');
     setEditCurrency(listing.currency);
-    setEditStatus(listing.status);
+    setEditStatus((listing.status.toLowerCase() === 'premium' ? 'premium' : listing.status.toLowerCase() === 'expired' ? 'expired' : listing.status.toLowerCase() === 'pending' ? 'pending' : 'active') as any);
     setEditPhone(listing.contactPhone);
     setEditWhatsapp(listing.whatsappNumber || listing.contactPhone);
     setEditSellerName(listing.sellerName);
@@ -470,7 +633,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
               className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black rounded-xl text-sm shadow-md transition-transform active:scale-98 flex items-center justify-center gap-2"
             >
               <Lock size={16} />
-              <span>{isAr ? 'دخول لوحة التحكم المشفرة' : 'Secure Admin Login'}</span>
+              <span>{isAr ? 'دخول لوحة التحكم الامنة' : 'Secure Admin Login'}</span>
             </button>
           </form>
 
@@ -872,8 +1035,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                                   : 'bg-slate-700 text-slate-300'
                               }`}
                           >
-                            {l.status === 'premium' && (isAr ? ' ★' : 'Featured')}
-                            {l.status === 'active' && (isAr ? 'نشط' : 'Active')}
+                            {l.status === 'premium' && (isAr ? '★ إعلان مميز' : '★ Featured')}
+                            {l.status === 'active' && (isAr ? 'نشط (عادي)' : 'Active')}
                             {l.status === 'pending' && (isAr ? 'معلق' : 'Pending')}
                             {l.status === 'expired' && (isAr ? 'منتهي' : 'Expired')}
                           </button>
@@ -881,15 +1044,19 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
 
                         {/* Actions: Edit, Star, Delete */}
                         <td className="p-3.5 text-center">
-                          <div className="flex items-center justify-center gap-1.5">
-                            {/* Toggle Featured */}
+                          <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                            {/* Toggle Featured Button with clear label */}
                             <button
                               onClick={() => handleToggleFeatured(l)}
-                              className={`p-1.5 rounded-lg transition-colors ${l.status === 'premium' ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-slate-400 hover:text-amber-300'
-                                }`}
-                              title={isAr ? 'تمييز الإعلان ★' : 'Feature Listing'}
+                              className={`px-2.5 py-1.5 rounded-lg font-bold text-[11px] flex items-center gap-1 transition-all shadow-xs ${
+                                l.status === 'premium'
+                                  ? 'bg-amber-400 hover:bg-amber-500 text-slate-950 font-black'
+                                  : 'bg-slate-800 hover:bg-amber-400 hover:text-slate-950 text-slate-300 border border-slate-700'
+                              }`}
+                              title={isAr ? (l.status === 'premium' ? 'اضغط لإلغاء التمييز وتحويله لإعلان عادي' : 'اضغط لترقية الإعلان إلى مميز ★') : 'Toggle featured status'}
                             >
-                              <Star size={14} className={l.status === 'premium' ? 'fill-current' : ''} />
+                              <Star size={12} className={l.status === 'premium' ? 'fill-slate-950' : ''} />
+                              <span>{l.status === 'premium' ? (isAr ? 'إلغاء التمييز' : 'Unfeature') : (isAr ? 'تحويل لمميز ★' : 'Make Featured ★')}</span>
                             </button>
 
                             {/* Edit Button */}
@@ -1273,59 +1440,405 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
               </form>
             </div>
 
-            {/* Users Table */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-              <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+            {/* App Installs & Users Management Card */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm space-y-4 p-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
                 <div>
-                  <h3 className="font-bold text-white text-sm">{isAr ? 'المستخدمين المعتمدين في النظام' : 'Registered Users'}</h3>
-                  <p className="text-xs text-slate-400">{isAr ? 'حسابات إدارة النظام والمعلنين المعتمدين' : 'Admin and verified advertiser accounts'}</p>
+                  <h3 className="font-bold text-white text-base flex items-center gap-2">
+                    <Smartphone size={18} className="text-amber-400" />
+                    <span>{isAr ? 'إدارة معرّفات التطبيق (IDs) والزوار والحسابات وإيقاف التطبيق' : 'App IDs, Visitors & Account Management'}</span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {isAr
+                      ? 'استعراض كل ID قام بتنزيل التطبيق (زائر، حساب مجاني، مميز VIP) مع إمكانية إيقاف وحظر التطبيق وتحديد السبب'
+                      : 'Manage all app installation IDs, visitors, free/VIP accounts, and suspend with specified reasons.'}
+                  </p>
                 </div>
               </div>
 
-              <table className="w-full text-right text-xs">
-                <thead className="bg-slate-950 text-slate-400 font-bold border-b border-slate-800">
-                  <tr>
-                    <th className="p-3.5">{isAr ? 'المستخدم' : 'User'}</th>
-                    <th className="p-3.5">{isAr ? 'رقم الهاتف' : 'Phone'}</th>
-                    <th className="p-3.5">{isAr ? 'نوع الحساب' : 'Type'}</th>
-                    <th className="p-3.5">{isAr ? 'الصلاحية' : 'Role'}</th>
-                    <th className="p-3.5 text-center">{isAr ? 'حالة التوثيق' : 'Verification'}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  <tr className="bg-amber-500/5">
-                    <td className="p-3.5 font-bold text-white flex items-center gap-2">
-                      <Shield size={14} className="text-amber-400" />
-                      <span>إدارة عون يمن (Admin)</span>
-                    </td>
-                    <td className="p-3.5 text-slate-300 font-mono">+967 770 000 001</td>
-                    <td className="p-3.5 text-slate-300">{isAr ? 'منشأة / شركة' : 'Company'}</td>
-                    <td className="p-3.5">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-400/20 text-amber-300">Super Admin</span>
-                    </td>
-                    <td className="p-3.5 text-center text-emerald-400 font-bold">✓ {isAr ? 'مشترك' : 'Verified'}</td>
-                  </tr>
-                  <tr>
-                    <td className="p-3.5 font-semibold text-white">حمزة الشيف اليمني</td>
-                    <td className="p-3.5 text-slate-300 font-mono">+967 777 123 456</td>
-                    <td className="p-3.5 text-slate-300">{isAr ? 'حساب شخصي' : 'Personal'}</td>
-                    <td className="p-3.5">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300">{isAr ? 'معلن' : 'Advertiser'}</span>
-                    </td>
-                    <td className="p-3.5 text-center text-emerald-400 font-bold">✓ {isAr ? 'مشترك (+967)' : 'Verified'}</td>
-                  </tr>
-                  <tr>
-                    <td className="p-3.5 font-semibold text-white">مطاعم الروابي السياحية</td>
-                    <td className="p-3.5 text-slate-300 font-mono">+967 771 888 999</td>
-                    <td className="p-3.5 text-slate-300">{isAr ? 'شركة ومؤسسة' : 'Company'}</td>
-                    <td className="p-3.5">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300">{isAr ? 'صاحب عمل' : 'Employer'}</span>
-                    </td>
-                    <td className="p-3.5 text-center text-emerald-400 font-bold">✓ {isAr ? 'مشترك' : 'Verified'}</td>
-                  </tr>
-                </tbody>
-              </table>
+              {/* KPI Badges */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs">
+                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                  <span className="text-slate-400 block text-[11px] mb-0.5">{isAr ? 'إجمالي المعرّفات (IDs)' : 'Total IDs'}</span>
+                  <span className="text-lg font-black text-white">{managedAppUsers.length}</span>
+                </div>
+                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                  <span className="text-slate-400 block text-[11px] mb-0.5">{isAr ? 'زوار الاستعراض' : 'Visitors'}</span>
+                  <span className="text-lg font-black text-blue-400">
+                    {managedAppUsers.filter((u) => u.type === 'visitor').length}
+                  </span>
+                </div>
+                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                  <span className="text-slate-400 block text-[11px] mb-0.5">{isAr ? 'حسابات مجانية' : 'Free Accounts'}</span>
+                  <span className="text-lg font-black text-emerald-400">
+                    {managedAppUsers.filter((u) => u.type === 'free_user').length}
+                  </span>
+                </div>
+                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                  <span className="text-slate-400 block text-[11px] mb-0.5">{isAr ? 'حسابات مميزة VIP' : 'VIP Accounts'}</span>
+                  <span className="text-lg font-black text-amber-400">
+                    {managedAppUsers.filter((u) => u.type === 'vip_user').length}
+                  </span>
+                </div>
+                <div className="bg-slate-950 p-3 rounded-xl border border-rose-900/40">
+                  <span className="text-rose-400 block text-[11px] mb-0.5">{isAr ? 'الموقوفين / المحظورين' : 'Suspended'}</span>
+                  <span className="text-lg font-black text-rose-400">
+                    {managedAppUsers.filter((u) => u.status === 'suspended').length}
+                  </span>
+                </div>
+              </div>
+
+              {/* Toolbar: Filters & Live Search */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
+                {/* Filter Pills */}
+                <div className="flex items-center gap-1.5 flex-wrap text-xs font-bold">
+                  <button
+                    onClick={() => setAppUsersFilter('all')}
+                    className={`px-3 py-1.5 rounded-lg transition-colors ${
+                      appUsersFilter === 'all'
+                        ? 'bg-amber-400 text-slate-950'
+                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    {isAr ? 'الكل' : 'All'} ({managedAppUsers.length})
+                  </button>
+                  <button
+                    onClick={() => setAppUsersFilter('visitor')}
+                    className={`px-3 py-1.5 rounded-lg transition-colors ${
+                      appUsersFilter === 'visitor'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    {isAr ? 'زوار استعراض' : 'Visitors'}
+                  </button>
+                  <button
+                    onClick={() => setAppUsersFilter('free_user')}
+                    className={`px-3 py-1.5 rounded-lg transition-colors ${
+                      appUsersFilter === 'free_user'
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    {isAr ? 'حسابات مجانية' : 'Free Users'}
+                  </button>
+                  <button
+                    onClick={() => setAppUsersFilter('vip_user')}
+                    className={`px-3 py-1.5 rounded-lg transition-colors ${
+                      appUsersFilter === 'vip_user'
+                        ? 'bg-amber-500 text-slate-950'
+                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    {isAr ? '★ مميز VIP' : '★ VIP'}
+                  </button>
+                  <button
+                    onClick={() => setAppUsersFilter('suspended')}
+                    className={`px-3 py-1.5 rounded-lg transition-colors ${
+                      appUsersFilter === 'suspended'
+                        ? 'bg-rose-600 text-white'
+                        : 'bg-slate-800 text-rose-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    {isAr ? 'الموقوفين' : 'Suspended'}
+                  </button>
+                </div>
+
+                {/* Search */}
+                <div className="relative max-w-xs">
+                  <input
+                    type="text"
+                    value={appUsersSearch}
+                    onChange={(e) => setAppUsersSearch(e.target.value)}
+                    placeholder={isAr ? 'بحث بالمعرّف ID، الهاتف، الاسم، أو سبب الإيقاف...' : 'Search ID, phone, reason...'}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-400 pl-8"
+                  />
+                  <Search size={14} className="absolute left-2.5 top-2.5 text-slate-500 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* Main Table */}
+              <div className="overflow-x-auto rounded-xl border border-slate-800">
+                <table className="w-full text-right text-xs">
+                  <thead className="bg-slate-950 text-slate-400 font-bold border-b border-slate-800">
+                    <tr>
+                      <th className="p-3.5">{isAr ? 'المعرّف الفريد (ID)' : 'Unique ID'}</th>
+                      <th className="p-3.5">{isAr ? 'المستخدم / الهاتف' : 'User / Phone'}</th>
+                      <th className="p-3.5">{isAr ? 'الجهاز وتاريخ التنزيل' : 'Device & Install Date'}</th>
+                      <th className="p-3.5 text-center">{isAr ? 'نوع الهوية والاشتراك' : 'Tier & Status'}</th>
+                      <th className="p-3.5 text-center">{isAr ? 'حالة التطبيق والمعرّف' : 'App Status'}</th>
+                      <th className="p-3.5 text-center">{isAr ? 'الإجراءات (إيقاف / تفعيل / ترقية)' : 'Actions'}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {managedAppUsers
+                      .filter((u) => {
+                        if (appUsersFilter !== 'all') {
+                          if (appUsersFilter === 'suspended') {
+                            if (u.status !== 'suspended') return false;
+                          } else if (u.type !== appUsersFilter) {
+                            return false;
+                          }
+                        }
+                        if (appUsersSearch.trim()) {
+                          const q = appUsersSearch.toLowerCase().trim();
+                          const idMatch = u.id.toLowerCase().includes(q);
+                          const nameMatch = (u.name || '').toLowerCase().includes(q);
+                          const phoneMatch = (u.phone || '').includes(q);
+                          const reasonMatch = (u.suspensionReason || '').toLowerCase().includes(q);
+                          const deviceMatch = (u.deviceModel || '').toLowerCase().includes(q);
+                          return idMatch || nameMatch || phoneMatch || reasonMatch || deviceMatch;
+                        }
+                        return true;
+                      })
+                      .map((u) => {
+                        const isSuspended = u.status === 'suspended';
+                        const isVip = u.type === 'vip_user';
+                        const isVisitor = u.type === 'visitor';
+
+                        return (
+                          <tr
+                            key={u.id}
+                            className={`transition-colors ${
+                              isSuspended
+                                ? 'bg-rose-950/20 hover:bg-rose-950/30'
+                                : isVip
+                                ? 'bg-amber-500/5 hover:bg-amber-500/10'
+                                : 'hover:bg-slate-800/40'
+                            }`}
+                          >
+                            {/* 1. Unique ID */}
+                            <td className="p-3.5">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono font-bold text-amber-300 text-xs bg-slate-950 px-2 py-1 rounded border border-slate-800">
+                                  {u.id}
+                                </span>
+                                <button
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(u.id);
+                                    alert(isAr ? `تم نسخ المعرّف: ${u.id}` : 'ID copied');
+                                  }}
+                                  className="text-slate-500 hover:text-white transition-colors"
+                                  title={isAr ? 'نسخ المعرّف' : 'Copy ID'}
+                                >
+                                  <Copy size={13} />
+                                </button>
+                              </div>
+                              <span className="text-[11px] text-slate-400 block mt-1">
+                                {isVisitor
+                                  ? (isAr ? 'زائر استعراض فقط' : 'Guest Visitor')
+                                  : (isAr ? `حساب مسجل (${u.accountType})` : 'Registered Account')}
+                              </span>
+                            </td>
+
+                            {/* 2. User & Phone */}
+                            <td className="p-3.5">
+                              {u.name ? (
+                                <div>
+                                  <span className="font-bold text-white block">{u.name}</span>
+                                  <span className="text-slate-400 font-mono text-[11px]">{u.phone}</span>
+                                </div>
+                              ) : (
+                                <span className="text-slate-500 italic text-xs">
+                                  {isAr ? 'زائر بدون تسجيل حساب' : 'Guest (Unregistered)'}
+                                </span>
+                              )}
+                            </td>
+
+                            {/* 3. Device & Install Date */}
+                            <td className="p-3.5">
+                              <div className="flex items-center gap-1.5 text-slate-300">
+                                <Smartphone size={13} className="text-slate-500" />
+                                <span>{u.deviceModel}</span>
+                                <span className="text-[10px] text-slate-500 font-mono">({u.platform})</span>
+                              </div>
+                              <span className="text-[10px] text-slate-500 block mt-0.5">
+                                {isAr ? `تنزيل: ${u.installDate} • نشاط: ${u.lastActive}` : `${u.installDate} • ${u.lastActive}`}
+                              </span>
+                            </td>
+
+                            {/* 4. Tier & Status */}
+                            <td className="p-3.5 text-center">
+                              {isVisitor ? (
+                                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-500/15 text-blue-300 border border-blue-500/30">
+                                  {isAr ? 'زائر استعراض' : 'Visitor'}
+                                </span>
+                              ) : isVip ? (
+                                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/40">
+                                  {isAr ? '★ حساب مميز (VIP)' : '★ VIP Account'}
+                                </span>
+                              ) : (
+                                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                                  {isAr ? 'حساب مجاني' : 'Free Account'}
+                                </span>
+                              )}
+                            </td>
+
+                            {/* 5. App Status & Suspension Reason */}
+                            <td className="p-3.5 text-center">
+                              {isSuspended ? (
+                                <div className="space-y-1">
+                                  <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-rose-500/20 text-rose-300 border border-rose-500/40 inline-flex items-center gap-1">
+                                    <Ban size={11} />
+                                    <span>{isAr ? 'التطبيق موقوف / محظور' : 'Suspended'}</span>
+                                  </span>
+                                  {u.suspensionReason && (
+                                    <div className="text-[11px] text-rose-300/90 bg-rose-950/40 p-1.5 rounded border border-rose-900/50 max-w-xs mx-auto text-right leading-tight">
+                                      <strong className="text-rose-200">{isAr ? 'السبب:' : 'Reason:'} </strong>
+                                      {u.suspensionReason}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 inline-flex items-center gap-1">
+                                  <CheckCircle2 size={11} />
+                                  <span>{isAr ? 'نشط ويعمل' : 'Active'}</span>
+                                </span>
+                              )}
+                            </td>
+
+                            {/* 6. Actions */}
+                            <td className="p-3.5 text-center">
+                              <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                                {/* Suspend or Reactivate button */}
+                                {isSuspended ? (
+                                  <button
+                                    onClick={() => handleReactivateAppUser(u.id)}
+                                    className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] transition-all shadow-xs flex items-center gap-1"
+                                    title={isAr ? 'إلغاء الإيقاف وإعادة تفعيل التطبيق لهذا المعرّف' : 'Reactivate'}
+                                  >
+                                    <CheckCircle2 size={12} />
+                                    <span>{isAr ? 'إلغاء الإيقاف والتفعيل' : 'Reactivate'}</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => {
+                                      setSuspensionModalTarget({
+                                        id: u.id,
+                                        name: u.name,
+                                        type: isVisitor ? 'زائر استعراض' : isVip ? 'حساب مميز VIP' : 'حساب مجاني',
+                                      });
+                                    }}
+                                    className="px-2.5 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white font-bold text-[11px] transition-all border border-rose-500/30 flex items-center gap-1"
+                                    title={isAr ? 'إيقاف وحظر التطبيق لهذا المعرّف مع تحديد السبب' : 'Suspend App ID'}
+                                  >
+                                    <Ban size={12} />
+                                    <span>{isAr ? 'إيقاف التطبيق' : 'Suspend ID'}</span>
+                                  </button>
+                                )}
+
+                                {/* Free <-> VIP Toggle for registered accounts */}
+                                {!isVisitor && (
+                                  <button
+                                    onClick={() => handleToggleAppUserVip(u.id)}
+                                    className={`px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all shadow-xs flex items-center gap-1 ${
+                                      isVip
+                                        ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
+                                        : 'bg-amber-400 hover:bg-amber-500 text-slate-950 font-black'
+                                    }`}
+                                    title={isAr ? (isVip ? 'تحويل الحساب إلى مجاني' : 'ترقية الحساب إلى مميز VIP ★') : 'Toggle VIP'}
+                                  >
+                                    <Star size={11} className={isVip ? '' : 'fill-slate-950'} />
+                                    <span>{isVip ? (isAr ? 'تحويل لمجاني' : 'Downgrade') : (isAr ? 'ترقية لـ VIP ★' : 'Upgrade VIP')}</span>
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
             </div>
+
+            {/* SUSPENSION MODAL WITH REASON SPECIFICATION */}
+            {suspensionModalTarget && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+                <div className="bg-slate-900 border border-rose-600/50 text-slate-100 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+                  <div className="bg-rose-950/80 px-6 py-4 border-b border-rose-800 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-rose-600 text-white rounded-lg">
+                        <AlertOctagon size={18} />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-sm sm:text-base text-white">
+                          {isAr ? 'إيقاف وحظر المعرّف / التطبيق' : 'Suspend App ID'}
+                        </h3>
+                        <span className="text-[11px] text-rose-300 font-mono">
+                          {suspensionModalTarget.id} ({suspensionModalTarget.name || suspensionModalTarget.type})
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setSuspensionModalTarget(null)}
+                      className="p-1 text-slate-400 hover:text-white"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  <div className="p-6 space-y-4 text-xs">
+                    <div className="bg-rose-950/30 border border-rose-900/50 p-3 rounded-xl text-rose-200">
+                      <p className="leading-relaxed">
+                        {isAr
+                          ? 'سيتم حظر وإيقاف هذا المعرّف عن استخدام التطبيق ونشر الإعلانات فورياً، وسيظهر سبب الإيقاف في سجلات الإدارة وعند فتح التطبيق.'
+                          : 'This ID will be suspended immediately. The specified reason will be logged and displayed.'}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="font-bold text-slate-300 block mb-1.5">
+                        {isAr ? 'اختر سبب الإيقاف المعتمد:' : 'Select Suspension Reason:'}
+                      </label>
+                      <select
+                        value={selectedSuspensionReason}
+                        onChange={(e) => setSelectedSuspensionReason(e.target.value)}
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:ring-2 focus:ring-rose-500 text-xs"
+                      >
+                        <option value="مخالفة شروط وقوانين النشر في اليمن">مخالفة شروط وقوانين النشر في اليمن</option>
+                        <option value="نشر إعلانات وهمية أو بأسعار مضللة وخادعة">نشر إعلانات وهمية أو بأسعار مضللة وخادعة</option>
+                        <option value="الاشتباه بنشاط احتيالي أو طلب مبالغ مسبقة">الاشتباه بنشاط احتيالي أو طلب مبالغ مسبقة</option>
+                        <option value="تكرار نشر الإعلانات ومخالفة إرشادات المنصة">تكرار نشر الإعلانات ومخالفة إرشادات المنصة</option>
+                        <option value="نشاط مريب وإرسال بلاغات عشوائية متكررة">نشاط مريب وإرسال بلاغات عشوائية متكررة</option>
+                        <option value="سبب إداري مخصص">سبب إداري مخصص (كتابة سبب يدوي أدناه)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="font-bold text-slate-300 block mb-1.5">
+                        {isAr ? 'تفاصيل إضافية أو سبب مخصص (اختياري):' : 'Custom / Additional Notes:'}
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={customSuspensionReason}
+                        onChange={(e) => setCustomSuspensionReason(e.target.value)}
+                        placeholder={isAr ? 'اكتب ملاحظات تفصيلية لسبب الإيقاف لتوثيقها في ملف المعرّف...' : 'Type specific reason details...'}
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:ring-2 focus:ring-rose-500 text-xs resize-none"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => setSuspensionModalTarget(null)}
+                        className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold transition-colors"
+                      >
+                        {isAr ? 'إلغاء' : 'Cancel'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleConfirmSuspension}
+                        className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-1.5"
+                      >
+                        <Ban size={14} />
+                        <span>{isAr ? 'تأكيد إيقاف المعرّف وحظره' : 'Confirm Suspension'}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

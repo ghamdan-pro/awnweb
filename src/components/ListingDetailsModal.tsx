@@ -28,6 +28,8 @@ import {
   Sparkles,
   Tag,
   Search,
+  Download,
+  Smartphone,
 } from 'lucide-react';
 import { Listing } from '../data/mockListings';
 import { AuthUser } from '../types/auth';
@@ -565,103 +567,48 @@ export const ListingDetailsModal: React.FC<ListingDetailsModalProps> = ({
                   </div>
                 </div>
 
-                {/* Primary Direct Contact Buttons */}
-                {currentUser ? (
-                  <div className="space-y-2 pt-2">
-                    <button
-                      onClick={handleCall}
-                      className="w-full flex items-center justify-center gap-2 bg-[#2e7d32] hover:bg-[#256828] text-white font-bold py-3 px-4 rounded-xl shadow-md transition-colors text-sm active:scale-95"
-                    >
-                      <Phone size={18} />
-                      <span>{isAr ? `اتصال هاتفي: ${listing.contactPhone}` : `Call: ${listing.contactPhone}`}</span>
-                    </button>
-
-                    {listing.whatsappNumber && (
-                      <button
-                        onClick={handleWhatsApp}
-                        className="w-full flex items-center justify-center gap-2 bg-[#25d366] hover:bg-[#20ba59] text-white font-bold py-3 px-4 rounded-xl shadow-md transition-colors text-sm active:scale-95"
-                      >
-                        <MessageCircle size={18} />
-                        <span>{isAr ? 'مراسلة عبر واتساب' : 'Chat via WhatsApp'}</span>
-                      </button>
-                    )}
-
-                    <button
-                      onClick={() => onOpenChat(listing)}
-                      className="w-full flex items-center justify-center gap-2 bg-white hover:bg-slate-50 text-[#68142c] font-bold py-2.5 px-4 rounded-xl border-2 border-[#68142c] transition-colors text-sm"
-                    >
-                      <MessageSquare size={17} />
-                      <span>{isAr ? 'محادثة داخلية في التطبيق' : 'Chat in App'}</span>
-                    </button>
+                {/* Call-to-action: Direct contact is exclusive to Mobile App on Web Platform */}
+                <div className="bg-amber-50/90 border border-amber-300 rounded-xl p-4 text-center space-y-3 pt-4">
+                  <div className="w-12 h-12 rounded-full bg-[#68142c] text-amber-300 mx-auto flex items-center justify-center shadow-md">
+                    <Smartphone size={24} />
                   </div>
-                ) : (
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center space-y-3 pt-3">
-                    <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-900 mx-auto flex items-center justify-center">
-                      <Lock size={18} />
-                    </div>
-                    <div>
-                      <h5 className="font-bold text-xs text-amber-950">
-                        {isAr ? 'بيانات التواصل مع الناشر مقفلة' : 'Publisher contact details locked'}
-                      </h5>
-                      <p className="text-[11px] text-amber-900/80 mt-1 leading-normal">
-                        {isAr
-                          ? 'أرقام الهاتف والواتساب والمحادثة تظهر فقط بعد تسجيل الدخول لحماية خصوصية المعلنين.'
-                          : 'Phone & WhatsApp are hidden until you log in.'}
-                      </p>
-                    </div>
-                    <button
-                      onClick={onOpenLogin}
-                      className="w-full py-2.5 bg-[#68142c] hover:bg-[#520f23] text-white text-xs font-bold rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
-                    >
-                      <LogIn size={15} />
-                      <span>{isAr ? 'تسجيل الدخول لعرض أرقام التواصل' : 'Log In to View Contact Info'}</span>
-                    </button>
+                  <div>
+                    <h5 className="font-bold text-sm text-[#68142c]">
+                      {isAr ? 'التواصل المباشر متاح عبر تطبيق الجوال' : 'Contact available on Mobile App'}
+                    </h5>
+                    <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
+                      {isAr
+                        ? 'لحماية خصوصية المعلنين ومكافحة الاحتيال، تظهر أرقام الهواتف والتواصل المباشر والواتساب حصرياً عبر تطبيق عون يمن للهواتف الذكية.'
+                        : 'For privacy and security, advertiser contact details are available exclusively via the Awn Yemen Mobile App.'}
+                    </p>
                   </div>
-                )}
+                  <a
+                    href="/downloads/awn-yemen.apk"
+                    download="awn-yemen.apk"
+                    className="w-full py-3 bg-[#68142c] hover:bg-[#520f23] text-white text-xs font-bold rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    <Download size={16} className="text-amber-300" />
+                    <span>{isAr ? 'تحميل تطبيق عون يمن (APK) 📱' : 'Download Android App (APK)'}</span>
+                  </a>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Mobile Viewport: Fixed Bottom Contact Bar */}
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-slate-200 px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.15)] flex items-center gap-2">
-          {currentUser ? (
-            <>
-              <button
-                onClick={handleCall}
-                className="flex-1 flex items-center justify-center gap-2 bg-[#2e7d32] active:bg-[#256828] text-white font-black py-3 px-3 rounded-xl shadow-md text-sm transition-transform active:scale-95"
-              >
-                <Phone size={18} />
-                <span>{isAr ? 'اتصال هاتفي' : 'Call'}</span>
-              </button>
-
-              {listing.whatsappNumber && (
-                <button
-                  onClick={handleWhatsApp}
-                  className="p-3 bg-[#25d366] text-white rounded-xl shadow-md transition-transform active:scale-95 flex items-center justify-center"
-                  title={isAr ? 'واتساب' : 'WhatsApp'}
-                >
-                  <MessageCircle size={20} />
-                </button>
-              )}
-
-              <button
-                onClick={() => onOpenChat(listing)}
-                className="flex-1 flex items-center justify-center gap-1.5 bg-white border-2 border-[#68142c] text-[#68142c] font-black py-2.5 px-3 rounded-xl text-xs sm:text-sm transition-transform active:scale-95"
-              >
-                <MessageSquare size={17} />
-                <span>{isAr ? 'محادثة داخلية' : 'Chat in App'}</span>
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={onOpenLogin}
-              className="w-full flex items-center justify-center gap-2 bg-[#68142c] hover:bg-[#520f23] text-white font-black py-3 px-4 rounded-xl shadow-md text-xs sm:text-sm active:scale-98"
-            >
-              <Lock size={16} className="text-amber-300" />
-              <span>{isAr ? 'سجل الدخول لعرض رقم الناشر والتواصل' : 'Log In to View Phone & Contact'}</span>
-            </button>
-          )}
+        {/* Mobile Viewport: Fixed Bottom Contact Notice */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-slate-200 px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.15)] flex items-center justify-between gap-3">
+          <div className="text-xs font-bold text-slate-800">
+            {isAr ? 'أرقام التواصل متاحة عبر تطبيق الجوال' : 'Contact available on Mobile App'}
+          </div>
+          <a
+            href="/downloads/awn-yemen.apk"
+            download="awn-yemen.apk"
+            className="flex items-center justify-center gap-1.5 bg-[#68142c] hover:bg-[#520f23] text-white font-bold py-2.5 px-4 rounded-xl shadow-md text-xs shrink-0"
+          >
+            <Download size={15} className="text-amber-300" />
+            <span>{isAr ? 'حمّل التطبيق للتواصل 📱' : 'Download App'}</span>
+          </a>
         </div>
       </div>
     </div>

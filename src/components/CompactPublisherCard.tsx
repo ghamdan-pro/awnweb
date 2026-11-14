@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Phone, MessageCircle, Star, ShieldCheck, Briefcase, UserCheck, Building2, ChevronLeft, Lock, Eye, Tag, Search } from 'lucide-react';
+import { MapPin, Star, ShieldCheck, ChevronLeft, Eye, Tag, Search, Smartphone } from 'lucide-react';
 import { Listing } from '../data/mockListings';
 import { AuthUser } from '../types/auth';
 
@@ -13,41 +13,14 @@ interface CompactPublisherCardProps {
 
 export const CompactPublisherCard: React.FC<CompactPublisherCardProps> = ({
   listing,
-  currentUser,
   onOpenDetails,
-  onRequireLogin,
   lang,
 }) => {
   const isAr = lang === 'ar';
   const primaryMedia = listing.media.find((m) => m.isPrimary) || listing.media[0];
 
   const handleCardClick = () => {
-    if (!currentUser) {
-      onRequireLogin(listing, 'details');
-    } else {
-      onOpenDetails(listing);
-    }
-  };
-
-  const handleCall = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!currentUser) {
-      onRequireLogin(listing, 'contact');
-      return;
-    }
-    window.location.href = `tel:${listing.contactPhone.replace(/\s+/g, '')}`;
-  };
-
-  const handleWhatsApp = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!currentUser) {
-      onRequireLogin(listing, 'contact');
-      return;
-    }
-    if (!listing.whatsappNumber) return;
-    const cleanNumber = listing.whatsappNumber.replace(/[^0-9]/g, '');
-    const text = encodeURIComponent(`مرحباً أخي الكريم، أتواصل معك بخصوص إعلانك على عون يمن: "${listing.title}"`);
-    window.open(`https://wa.me/${cleanNumber}?text=${text}`, '_blank');
+    onOpenDetails(listing);
   };
 
   // تمييز نوع الإعلان: عرض (أخضر زمردي) أو طلب (بنفسجي متميز)
@@ -102,91 +75,72 @@ export const CompactPublisherCard: React.FC<CompactPublisherCardProps> = ({
           </div>
         )}
 
-        {/* Featured Tag (مميز) */}
+        {/* Featured Badge */}
         {isFeatured && (
-          <div className="absolute top-1.5 right-1.5 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black text-[10px] px-1.5 py-0.5 rounded shadow-xs flex items-center gap-0.5">
+          <div className="absolute top-2 right-2 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black text-[10px] px-2 py-0.5 rounded shadow-sm flex items-center gap-1 z-10">
             <Star size={10} className="fill-slate-950" />
-            <span>{isAr ? 'مميز' : 'Featured'}</span>
+            <span>{isAr ? 'إعلان مميز ★' : 'Featured ★'}</span>
           </div>
         )}
 
-        {/* Media count */}
-        {listing.media.length > 1 && (
-          <div className="absolute bottom-1.5 left-1.5 bg-black/65 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
-            {listing.media.length} {isAr ? 'صور' : 'Photos'}
-          </div>
-        )}
+        {/* Category Pill Over Image */}
+        <div className="absolute bottom-1.5 right-1.5 bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded">
+          {isAr ? listing.subCategoryNameAr : listing.subCategoryId}
+        </div>
       </div>
 
-      {/* Content & Publisher Summary */}
+      {/* Details Body */}
       <div className="flex-1 flex flex-col justify-between min-w-0">
         <div>
-          {/* Top Line: Badge, Views (من الخارج فقط) & Location */}
+          {/* Header Row: Offer/Request Badge, Region, Status */}
           <div className="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
-            <div className="flex items-center gap-2">
-              <div className={`flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-md border ${badge.color}`}>
+            <div className="flex items-center gap-1.5">
+              <span
+                className={`text-[11px] px-2.5 py-0.5 rounded-md border flex items-center gap-1 ${badge.color}`}
+              >
                 {badge.icon}
                 <span>{badge.text}</span>
-              </div>
-
-              {/* إظهار عدد المشاهدات من الخارج فقط */}
-              <div className="flex items-center gap-1 text-[11px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/70" title={isAr ? 'عدد المشاهدات' : 'Views'}>
-                <Eye size={12} className="text-slate-500" />
-                <span>{(listing.viewsCount || 1).toLocaleString()}</span>
-                <span className="text-[10px] text-slate-400 font-normal">{isAr ? 'مشاهدة' : 'views'}</span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1 text-xs text-slate-500">
-              <MapPin size={12} className="text-slate-400" />
-              <span className="truncate max-w-[150px]">
-                {isAr ? `${listing.regionNameAr} - ${listing.cityNameAr}` : listing.cityNameAr}
               </span>
+
+              <div className="flex items-center gap-1 text-slate-500 text-xs">
+                <MapPin size={12} className="text-slate-400" />
+                <span className="font-medium">
+                  {listing.regionNameAr} - {listing.cityNameAr}
+                </span>
+              </div>
             </div>
+
+            <span className="text-[11px] text-slate-400">{listing.createdAt}</span>
           </div>
 
           {/* Ad Title */}
-          <h3 className="font-bold text-slate-900 text-sm sm:text-base leading-snug line-clamp-2 group-hover:text-[#68142c] transition-colors mb-1.5">
+          <h3 className="font-bold text-slate-900 text-sm sm:text-base leading-snug line-clamp-2 mb-1.5 group-hover:text-[#68142c] transition-colors">
             {listing.title}
           </h3>
 
-          {/* Ad Text Snippet */}
+          {/* Snippet / Description */}
           <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed mb-2">
             {listing.description}
           </p>
-
-          {/* Specific Highlights (Skills or Corporate CR or Job Benefits) */}
-          {listing.workerSkills && listing.workerSkills.length > 0 && (
-            <div className="flex flex-wrap gap-1 mb-2">
-              {listing.workerSkills.slice(0, 3).map((skill, i) => (
-                <span key={i} className="text-[10px] bg-amber-100/70 text-amber-900 font-medium px-1.5 py-0.5 rounded">
-                  ✓ {skill}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {listing.companyServicesList && listing.companyServicesList.length > 0 && (
-            <div className="text-[11px] text-indigo-900 font-medium bg-indigo-50/70 px-2 py-1 rounded border border-indigo-100 mb-2 flex items-center justify-between">
-              <span className="truncate">📋 {listing.companyServicesList[0].nameAr}</span>
-              <span className="text-[10px] font-bold text-indigo-700 shrink-0">
-                +{listing.companyServicesList.length} {isAr ? 'خدمات معتمدة' : 'services'}
-              </span>
-            </div>
-          )}
         </div>
 
-        {/* Bottom Bar: Publisher Identity, Price/Salary & Quick Contact */}
-        <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 flex-wrap">
-          {/* Publisher Identity */}
+        {/* Footer: Seller name, Price, Contact Button */}
+        <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
+          {/* Seller Info */}
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-6 h-6 rounded-full bg-[#68142c] text-amber-300 flex items-center justify-center text-[10px] font-bold shrink-0">
+            <div className="w-6 h-6 rounded-full bg-[#68142c] text-white flex items-center justify-center font-bold text-[10px] shrink-0">
               {listing.sellerName.charAt(0)}
             </div>
-            <div className="truncate">
-              <span className="text-xs font-bold text-slate-800 block truncate">{listing.sellerName}</span>
-              <span className="text-[10px] text-slate-400">{listing.createdAt}</span>
+            <div className="min-w-0">
+              <span className="text-xs font-bold text-slate-800 truncate block">
+                {listing.sellerName}
+              </span>
             </div>
+            {listing.sellerVerified && (
+              <span title={isAr ? 'معلن موثق' : 'Verified'}>
+                <ShieldCheck size={14} className="text-emerald-600 shrink-0" />
+              </span>
+            )}
           </div>
 
           {/* Price / Salary or on agreement */}
@@ -205,26 +159,19 @@ export const CompactPublisherCard: React.FC<CompactPublisherCardProps> = ({
             )}
           </div>
 
-          {/* Quick Contact Actions */}
+          {/* Quick Contact Actions - بدون إظهار أرقام الهواتف على الويب */}
           <div className="flex items-center gap-1.5 shrink-0">
             <button
-              onClick={handleCall}
-              className="p-1.5 bg-[#2e7d32] hover:bg-[#256828] text-white rounded-lg shadow-xs transition-colors flex items-center gap-1 text-xs font-bold px-2.5"
-              title={isAr ? 'اتصال مباشر' : 'Call'}
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenDetails(listing);
+              }}
+              className="p-1.5 bg-amber-50 hover:bg-amber-100 text-[#68142c] border border-amber-300 rounded-lg shadow-2xs transition-colors flex items-center gap-1 text-xs font-bold px-2.5"
+              title={isAr ? 'التواصل متاح حصرياً عبر تطبيق الجوال' : 'Contact on Mobile App'}
             >
-              <Phone size={13} />
-              <span className="hidden sm:inline">{isAr ? 'اتصال' : 'Call'}</span>
+              <Smartphone size={13} />
+              <span>{isAr ? 'تواصل عبر التطبيق' : 'App Contact'}</span>
             </button>
-
-            {listing.whatsappNumber && (
-              <button
-                onClick={handleWhatsApp}
-                className="p-1.5 bg-[#25d366] hover:bg-[#20ba59] text-white rounded-lg shadow-xs transition-colors flex items-center justify-center"
-                title={isAr ? 'واتساب' : 'WhatsApp'}
-              >
-                <MessageCircle size={15} />
-              </button>
-            )}
 
             <button
               onClick={() => onOpenDetails(listing)}

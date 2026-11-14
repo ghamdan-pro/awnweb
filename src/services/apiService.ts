@@ -53,8 +53,8 @@ export const apiService = {
       const query = filters.q.toLowerCase();
       results = results.filter(
         (l) => l.title.toLowerCase().includes(query) ||
-               l.description.toLowerCase().includes(query) ||
-               ((l as any).content && (l as any).content.toLowerCase().includes(query))
+          l.description.toLowerCase().includes(query) ||
+          ((l as any).content && (l as any).content.toLowerCase().includes(query))
       );
     }
 
@@ -130,8 +130,8 @@ export const apiService = {
       cityNameAr: listingData.cityNameAr || 'حدة',
       status: isDraft ? 'DRAFT' : 'ACTIVE',
       purpose: listingData.purpose || 'both',
-      contactPhone: listingData.contactPhone || '+967777123456',
-      whatsappNumber: listingData.whatsappNumber || '+967777123456',
+      contactPhone: listingData.contactPhone || '+967777xxxxxx',
+      whatsappNumber: listingData.whatsappNumber || '+967777xxxxxx',
       contactEmail: listingData.contactEmail,
       sellerName: listingData.sellerName || 'مستخدم عون',
       sellerType: listingData.sellerType || 'personal',
@@ -181,7 +181,7 @@ export const apiService = {
           user: json.data?.user,
         };
       }
-    } catch (e) {}
+    } catch (e) { }
 
     // Fallback demo user
     return {
@@ -207,7 +207,7 @@ export const apiService = {
         const json = await res.json();
         if (json.data) return json.data;
       }
-    } catch (e) {}
+    } catch (e) { }
     return { platform, currentVisitors: platform === 'web' ? 15421 : 9851 };
   },
 
@@ -218,7 +218,7 @@ export const apiService = {
         const json = await res.json();
         if (json.data) return json.data;
       }
-    } catch (e) {}
+    } catch (e) { }
 
     // Fallback calculation from INITIAL_LISTINGS
     const totalViews = INITIAL_LISTINGS.reduce((sum, item) => sum + (item.viewsCount || 0), 0);
@@ -243,7 +243,7 @@ export const apiService = {
         const json = await res.json();
         if (json.data?.clicksCount) return json.data.clicksCount;
       }
-    } catch (e) {}
+    } catch (e) { }
 
     const item = INITIAL_LISTINGS.find((l) => l.id === id);
     if (item) {
@@ -264,7 +264,7 @@ export const apiService = {
         const json = await res.json();
         if (json.data?.viewsCount) return json.data.viewsCount;
       }
-    } catch (e) {}
+    } catch (e) { }
 
     const item = INITIAL_LISTINGS.find((l) => l.id === id);
     if (item) {
@@ -289,7 +289,7 @@ export const apiService = {
         const json = await res.json();
         if (json.data) return json.data;
       }
-    } catch (e) {}
+    } catch (e) { }
 
     // In-memory update
     const index = INITIAL_LISTINGS.findIndex((l) => l.id === id);
@@ -307,7 +307,7 @@ export const apiService = {
         method: 'DELETE',
       });
       if (res.ok) return true;
-    } catch (e) {}
+    } catch (e) { }
 
     const index = INITIAL_LISTINGS.findIndex((l) => l.id === id);
     if (index !== -1) {
@@ -326,7 +326,7 @@ export const apiService = {
         body: JSON.stringify({ status }),
       });
       if (res.ok) return true;
-    } catch (e) {}
+    } catch (e) { }
 
     const item = INITIAL_LISTINGS.find((l) => l.id === id);
     if (item) {

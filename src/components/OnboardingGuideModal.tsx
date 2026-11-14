@@ -35,18 +35,18 @@ export const OnboardingGuideModal: React.FC<OnboardingGuideModalProps> = ({
 
   const slides = [
     {
-      icon: <Sparkles size={36} className="text-amber-400" />,
-      badge: isAr ? 'مرحباً بك في عون يمن' : 'Welcome to Awn Yemen',
+      icon: <Sparkles size={36} className="text-amber-500" />,
+      badge: isAr ? 'مرحباً بك في عون يمن 🇾🇪' : 'Welcome to Awn Yemen',
       title: isAr
-        ? `أهلاً بك يا ${currentUser?.name || 'صديقنا'} في منصتك الموحدة`
-        : `Welcome ${currentUser?.name || 'Friend'} to Awn Yemen`,
+        ? 'عون يمن... منصتك للوظائف والخدمات والتسويق في مكان واحد'
+        : 'Awn Yemen... Your One-Stop Platform for Jobs, Services & Marketing',
       description: isAr
-        ? 'المنصة الأولى الموحدة في اليمن للوظائف، الكوادر والمهنيين، الخدمات، السيارات، والعقارات بكل شفافية وسرعة.'
-        : 'The leading classifieds & jobs marketplace in Yemen connecting talents, companies, and direct sellers.',
-      highlight: isAr ? 'تصفح الآلاف من الإعلانات في محافظات الجمهورية' : 'Browse thousands of verified listings across all governorates',
+        ? 'وظائف: اكتشف الفرص الوظيفية وفرص العمل المتنوعة . \nخدمات: ابحث عن الخدمات أو اعرض خدماتك. \nتسويق: أعلن عن منتجاتك وسوّقها بسهولة.'
+        : 'Jobs: Explore job vacancies and diverse opportunities | Services: Find services or offer yours | Marketing: Promote and sell your products easily.',
+      highlight: isAr ? 'كل ما تحتاجه ... في عون يمن' : 'Everything you need ... in Awn Yemen',
     },
     {
-      icon: <Briefcase size={36} className="text-amber-400" />,
+      icon: <Briefcase size={36} className="text-amber-500" />,
       badge: isAr ? 'المهنيين وأصحاب الأعمال' : 'Professionals & Employers',
       title: isAr
         ? currentUser?.accountType === 'company'
@@ -59,7 +59,7 @@ export const OnboardingGuideModal: React.FC<OnboardingGuideModalProps> = ({
       highlight: isAr ? 'إعلانات مخصصة للمهنيين وللشركات بمرونة عالية' : 'Tailored forms for skilled workers and corporate listings',
     },
     {
-      icon: <PhoneCall size={36} className="text-emerald-400" />,
+      icon: <PhoneCall size={36} className="text-emerald-500" />,
       badge: isAr ? 'التواصل المباشر والآمن' : 'Direct & Safe Contact',
       title: isAr ? 'أرقام الهاتف والواتساب مفتوحة لك الآن' : 'Direct Phone & WhatsApp Access',
       description: isAr
@@ -68,7 +68,7 @@ export const OnboardingGuideModal: React.FC<OnboardingGuideModalProps> = ({
       highlight: isAr ? 'اتصال مباشر وسريع بنقرة زر واحدة' : 'Instant 1-click calling and WhatsApp chat',
     },
     {
-      icon: <ShieldCheck size={36} className="text-blue-400" />,
+      icon: <ShieldCheck size={36} className="text-blue-500" />,
       badge: isAr ? 'حماية وأمان الخصوصية' : 'Privacy Protection',
       title: isAr ? 'رقم هاتفك محمي ولا يُنشر إلا بموافقتك' : 'Your Phone Privacy is Respected',
       description: isAr
@@ -96,16 +96,16 @@ export const OnboardingGuideModal: React.FC<OnboardingGuideModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-      <div className="bg-slate-900 border border-slate-700 text-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+      <div className="bg-white border border-slate-200 text-slate-800 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col">
         {/* Header bar */}
-        <div className="p-4 bg-slate-950/80 border-b border-slate-800 flex items-center justify-between">
-          <span className="text-[11px] font-bold px-3 py-1 bg-amber-400/20 text-amber-300 rounded-full border border-amber-400/30">
+        <div className="p-4 bg-[#68142c] text-white flex items-center justify-between">
+          <span className="text-[11px] font-bold px-3 py-1 bg-amber-400 text-slate-900 rounded-full shadow-xs">
             {currentSlideData.badge}
           </span>
           <button
             onClick={handleFinish}
-            className="p-1 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="p-1 rounded-full text-slate-200 hover:text-white hover:bg-white/10 transition-colors"
           >
             <X size={18} />
           </button>
@@ -114,22 +114,22 @@ export const OnboardingGuideModal: React.FC<OnboardingGuideModalProps> = ({
         {/* Slide Body */}
         <div className="p-6 sm:p-8 space-y-6 text-center">
           {/* Animated Icon Glow */}
-          <div className="w-20 h-20 rounded-3xl bg-slate-800/80 border border-slate-700 mx-auto flex items-center justify-center shadow-lg relative">
+          <div className="w-20 h-20 rounded-3xl bg-amber-50 border border-amber-200 mx-auto flex items-center justify-center shadow-md relative">
             <div className="absolute inset-0 rounded-3xl bg-amber-500/10 animate-pulse"></div>
             {currentSlideData.icon}
           </div>
 
           <div className="space-y-2">
-            <h3 className="text-lg sm:text-xl font-black text-white font-['Cairo']">
+            <h3 className="text-lg sm:text-xl font-black text-[#68142c] font-['Cairo']">
               {currentSlideData.title}
             </h3>
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-md mx-auto">
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-md mx-auto whitespace-pre-line">
               {currentSlideData.description}
             </p>
           </div>
 
-          <div className="p-3 bg-slate-950/60 border border-slate-800 rounded-2xl text-xs text-amber-300 font-semibold flex items-center justify-center gap-2">
-            <CheckCircle2 size={16} className="text-amber-400 shrink-0" />
+          <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-[#68142c] font-bold flex items-center justify-center gap-2">
+            <CheckCircle2 size={16} className="text-amber-500 shrink-0" />
             <span>{currentSlideData.highlight}</span>
           </div>
 
@@ -140,7 +140,7 @@ export const OnboardingGuideModal: React.FC<OnboardingGuideModalProps> = ({
                 key={idx}
                 onClick={() => setActiveSlide(idx)}
                 className={`h-2 rounded-full transition-all ${
-                  activeSlide === idx ? 'w-8 bg-amber-400' : 'w-2 bg-slate-700 hover:bg-slate-600'
+                  activeSlide === idx ? 'w-8 bg-[#68142c]' : 'w-2 bg-slate-200 hover:bg-slate-300'
                 }`}
               />
             ))}
@@ -148,14 +148,14 @@ export const OnboardingGuideModal: React.FC<OnboardingGuideModalProps> = ({
         </div>
 
         {/* Footer Buttons */}
-        <div className="p-5 bg-slate-950 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="p-4 sm:p-5 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
           <button
             type="button"
             onClick={() => {
               handleFinish();
               onOpenEditProfile();
             }}
-            className="text-xs font-bold text-slate-400 hover:text-white flex items-center gap-1.5 transition-colors order-2 sm:order-1"
+            className="text-xs font-bold text-slate-600 hover:text-[#68142c] flex items-center gap-1.5 transition-colors order-2 sm:order-1"
           >
             <Edit3 size={14} />
             <span>{isAr ? 'تعديل اسمي وبياناتي الشخصية' : 'Edit My Profile'}</span>
@@ -166,7 +166,7 @@ export const OnboardingGuideModal: React.FC<OnboardingGuideModalProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveSlide(activeSlide - 1)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl transition-colors"
+                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-xl transition-colors"
               >
                 {isAr ? 'السابق' : 'Previous'}
               </button>
@@ -175,7 +175,7 @@ export const OnboardingGuideModal: React.FC<OnboardingGuideModalProps> = ({
             <button
               type="button"
               onClick={handleNext}
-              className="flex-1 sm:flex-none px-6 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-xs rounded-xl shadow-md transition-transform active:scale-95 flex items-center justify-center gap-1.5"
+              className="flex-1 sm:flex-none px-6 py-2.5 bg-gradient-to-r from-[#68142c] to-[#8b203e] hover:from-[#560f23] hover:to-[#68142c] text-white font-bold text-xs rounded-xl shadow-md transition-transform active:scale-95 flex items-center justify-center gap-1.5"
             >
               <span>{activeSlide === slides.length - 1 ? (isAr ? 'ابدأ الاستخدام الآن 🚀' : 'Start Now') : (isAr ? 'التالي' : 'Next')}</span>
               {isAr ? <ArrowLeft size={14} /> : <ArrowRight size={14} />}

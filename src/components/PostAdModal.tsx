@@ -132,7 +132,7 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
 
   // Determine if user is subscriber (for featured ad button)
   const isSubscriber = Boolean(
-    currentUser?.isSubscribed ||
+    (currentUser as any)?.isSubscribed ||
     currentUser?.role === 'admin' ||
     (currentUser as any)?.subscriptionTier
   );
@@ -287,8 +287,8 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
       }
 
       // Automated Keyword Moderation
-      const mod = moderateAdContent(deriveTitle(trimmedContent), trimmedContent, uploadedImages);
-      if (!mod.allowed) {
+      const mod = moderateAdContent(deriveTitle(trimmedContent), trimmedContent, primaryPhone, uploadedImages);
+      if (!mod.isValid) {
         setErrorNotice(mod.reason || 'محتوى الإعلان مخالف لمعايير النشر.');
         return;
       }
@@ -322,8 +322,7 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
       creatorPhone: creatorPhone || undefined,
       contactPhone: creatorPhone,
       whatsappNumber: creatorPhone,
-      altPhone: altPhone || undefined,
-      sellerName: currentUser?.displayName || (isAr ? 'مستخدم عون' : 'Awn User'),
+      sellerName: currentUser?.name || (isAr ? 'مستخدم عون' : 'Awn User'),
       status: adStatus as any,
       publishedAt: isDraft ? undefined : nowIso,
       createdAt: nowIso,
@@ -333,12 +332,6 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
         isPrimary: i === 0,
         orderWeight: i,
       })),
-      mediaUrls: uploadedImages,
-      metadata: {
-        ...(payload as any)?.metadata,
-        mediaUrls: uploadedImages,
-        sectionType: adType === 'REQUEST' ? 'worker_profiles' : 'job_vacancies',
-      },
       price: null,
       currency: 'YER',
       priceNegotiable: true,

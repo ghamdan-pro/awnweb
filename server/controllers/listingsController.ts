@@ -58,6 +58,8 @@ export const searchListings = async (req: Request, res: Response): Promise<void>
       const from = (p - 1) * l;
       const to = from + l - 1;
 
+      const { data, error, count: dbCount } = await query.range(from, to);
+
       if (error) {
         console.error('❌ [Supabase searchListings Error]:', error.message, error.details, error.hint, error.code);
       }
@@ -104,11 +106,11 @@ export const searchListings = async (req: Request, res: Response): Promise<void>
           createdAt: item.created_at,
           media: (Array.isArray(item.metadata?.mediaUrls) && item.metadata.mediaUrls.length > 0)
             ? item.metadata.mediaUrls.map((url: string, index: number) => ({
-                id: `media-${index}`,
-                url,
-                isPrimary: index === 0,
-                orderWeight: index,
-              }))
+              id: `media-${index}`,
+              url,
+              isPrimary: index === 0,
+              orderWeight: index,
+            }))
             : (item.seller_avatar ? [{ id: 'media-0', url: item.seller_avatar, isPrimary: true, orderWeight: 0 }] : []),
           attributes: item.metadata?.attributes || [],
         }));
@@ -149,8 +151,8 @@ export const searchListings = async (req: Request, res: Response): Promise<void>
         const queryLower = (q as string).toLowerCase();
         filtered = filtered.filter(
           (l) => l.title.toLowerCase().includes(queryLower) ||
-                 l.description.toLowerCase().includes(queryLower) ||
-                 ((l as any).content && (l as any).content.toLowerCase().includes(queryLower))
+            l.description.toLowerCase().includes(queryLower) ||
+            ((l as any).content && (l as any).content.toLowerCase().includes(queryLower))
         );
       }
       if (days) {
@@ -214,15 +216,15 @@ export const getListingById = async (req: Request, res: Response): Promise<void>
           .from('listings')
           .update({ views_count: (data.views_count || 0) + 1 })
           .eq('id', id)
-          .then(() => {});
+          .then(() => { });
 
         const media = (Array.isArray(data.metadata?.mediaUrls) && data.metadata.mediaUrls.length > 0)
           ? data.metadata.mediaUrls.map((url: string, index: number) => ({
-              id: `media-${index}`,
-              url,
-              isPrimary: index === 0,
-              orderWeight: index,
-            }))
+            id: `media-${index}`,
+            url,
+            isPrimary: index === 0,
+            orderWeight: index,
+          }))
           : (data.seller_avatar ? [{ id: 'media-0', url: data.seller_avatar, isPrimary: true, orderWeight: 0 }] : []);
 
         res.status(200).json({
@@ -234,7 +236,7 @@ export const getListingById = async (req: Request, res: Response): Promise<void>
         });
         return;
       }
-    } catch (e) {}
+    } catch (e) { }
 
     // Check fallback
     const item = FALLBACK_LISTINGS.find((l) => l.id === id);
@@ -304,7 +306,7 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
     const finalCategoryId = categoryId || req.body.main_category_id || 'jobs';
     const finalSubCategoryId = subCategoryId || req.body.sub_category_id || finalCategoryId;
     const finalSharePhone = req.body.share_phone ?? sharePhone ?? true;
-    const finalContactPhone = finalSharePhone ? (contactPhone || creatorPhone || req.body.creator_phone || '+967777123456') : '';
+    const finalContactPhone = finalSharePhone ? (contactPhone || creatorPhone || req.body.creator_phone || '+967777xxxxxx') : '';
 
     // Automated Moderation Check (Keyword Compliance)
     const combinedForMod = (derivedTitle + ' ' + adContent).toLowerCase();
@@ -350,7 +352,7 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
           .limit(1)
           .maybeSingle();
         if (u) validSellerId = u.id;
-      } catch (_) {}
+      } catch (_) { }
     }
     if (!validSellerId) {
       validSellerId = '7b2e912f-9812-4211-8c4d-91b3e10fa892'; // حمزة الشيف اليمني
@@ -521,7 +523,7 @@ export const trackListingClick = async (req: Request, res: Response): Promise<vo
           updatedClicks = nextVal;
         }
       }
-    } catch (e) {}
+    } catch (e) { }
 
     // 2. Update local fallback listing
     const localAd = FALLBACK_LISTINGS.find((l) => l.id === id);
@@ -567,7 +569,7 @@ export const trackListingView = async (req: Request, res: Response): Promise<voi
           updatedViews = nextVal;
         }
       }
-    } catch (e) {}
+    } catch (e) { }
 
     // 2. Update local fallback listing
     const localAd = FALLBACK_LISTINGS.find((l) => l.id === id);

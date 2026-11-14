@@ -104,7 +104,7 @@ export const SubcategoryDetailView: React.FC<SubcategoryDetailViewProps> = ({
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => onOpenPostAd(activeSection)}
+              onClick={() => onOpenPostAd(activeSection === 'all' ? undefined : activeSection)}
               className="flex items-center gap-1.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 font-black px-3.5 py-2 rounded-xl text-xs sm:text-sm shadow-md transition-all active:scale-95"
             >
               <PlusCircle size={16} />
@@ -329,7 +329,7 @@ export const SubcategoryDetailView: React.FC<SubcategoryDetailViewProps> = ({
             </p>
           </div>
           <button
-            onClick={() => onOpenPostAd(activeSection)}
+            onClick={() => onOpenPostAd(activeSection === 'all' ? undefined : activeSection)}
             className="inline-flex items-center gap-1.5 bg-[#68142c] hover:bg-[#520f23] text-white font-bold px-4 py-2 rounded-xl text-xs shadow-sm transition-colors"
           >
             <PlusCircle size={15} />

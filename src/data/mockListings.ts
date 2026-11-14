@@ -87,6 +87,148 @@ export interface Listing {
 
 export const INITIAL_LISTINGS: Listing[] = [
   // =========================================================================
+  // إعلانات موصى بها مميزة مطابقة لصورة 1 (اعلانات قد تهمك)
+  // =========================================================================
+  {
+    id: 'listing-rec-decor-1',
+    title: 'يوجد لدينا تنفيذ وتصميم جميع أعمال الديكور والدهانات للمزيد من المقاطع والتفاصيل تواصلوا عن طريق التطبيق',
+    description: 'يوجد لدينا تنفيذ وتصميم جميع أعمال الديكور الداخلي والجبس بورد والدهانات الحديثة وورق الجدران والأرضيات الخشبية للمزيد من المقاطع والتفاصيل تواصلوا معنا عبر تطبيق عون يمن.',
+    categoryId: 'jobs',
+    categoryNameAr: 'وظائف',
+    subCategoryId: 'jobs-design',
+    subCategoryNameAr: 'تصميم وديكور',
+    sectionType: 'worker_profiles',
+    price: null,
+    currency: 'USD',
+    priceNegotiable: true,
+    countryId: 'ye',
+    regionId: 'ye-sanaa',
+    regionNameAr: 'صنعاء',
+    cityId: 'ye-san-sabeein',
+    cityNameAr: 'السبعين',
+    status: 'premium',
+    purpose: 'both',
+    contactPhone: '+967 777 334 455',
+    whatsappNumber: '+967 777 334 455',
+    sellerName: 'ورشة الإبداع للديكور والدهانات',
+    sellerType: 'company',
+    sellerVerified: true,
+    sellerRating: 4.9,
+    createdAt: 'منذ ساعتين',
+    viewsCount: 1420,
+    clicksCount: 520,
+    attributes: [
+      { key: 'specialty', labelAr: 'التخصص', valueAr: 'ديكورات داخلية ودهانات', labelEn: 'Specialty', valueEn: 'Interior Design' }
+    ],
+    media: [
+      { id: 'm-rec-1', url: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800&auto=format&fit=crop&q=80', isPrimary: true, orderWeight: 0 }
+    ]
+  },
+  {
+    id: 'listing-rec-pump-2',
+    title: 'مضخة 100 جالون. مضخة 750 جالون ثلاثية. جودة عالية أقل سعر وضمان',
+    description: 'مضخات مياه ومضخات غاطسة صناعية 100 جالون و750 جالون ثلاثية ديزل وكهرباء، كفاءة عالية وموفرة للطاقة مع توفر قطع الغيار والضمان المعتمد.',
+    categoryId: 'misc',
+    categoryNameAr: 'منوعات',
+    subCategoryId: 'misc-industrial',
+    subCategoryNameAr: 'معدات صناعية للبيع',
+    sectionType: 'general',
+    price: 3500,
+    currency: 'USD',
+    priceNegotiable: true,
+    countryId: 'ye',
+    regionId: 'ye-aden',
+    regionNameAr: 'عدن',
+    cityId: 'ye-ade-mansoura',
+    cityNameAr: 'المنصورة - المنطقة الصناعية',
+    status: 'premium',
+    purpose: 'both',
+    contactPhone: '+967 733 998 877',
+    sellerName: 'مؤسسة السلام للمعدات الصناعية والمضخات',
+    sellerType: 'company',
+    sellerVerified: true,
+    sellerRating: 4.8,
+    createdAt: 'منذ 3 ساعات',
+    viewsCount: 980,
+    clicksCount: 310,
+    attributes: [
+      { key: 'type', labelAr: 'النوع', valueAr: 'مضخات مياه ومعدات صناعية', labelEn: 'Type', valueEn: 'Industrial Pumps' }
+    ],
+    media: [
+      { id: 'm-rec-2', url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800&auto=format&fit=crop&q=80', isPrimary: true, orderWeight: 0 }
+    ]
+  },
+  {
+    id: 'listing-rec-contracting-3',
+    title: 'أحنا نبحث عن ناس يجيبوا لنا عمل أو مشاريع في مجال الديكورات أو النجارة ويحصل له على السعي حقه',
+    description: 'فريق عمل متكامل من النجارين والفنيين، نبحث عن وسطاء أو مهندسين يجيبوا لنا مشاريع وأعمال تشطيبات ونجارة وديكور ولهم نسبتهم وسعيهم المالي فوراً.',
+    categoryId: 'services',
+    categoryNameAr: 'خدمات',
+    subCategoryId: 'serv-carpentry',
+    subCategoryNameAr: 'مقاولات ونجارة',
+    sectionType: 'worker_profiles',
+    price: null,
+    currency: 'YER',
+    priceNegotiable: true,
+    countryId: 'ye',
+    regionId: 'ye-sanaa',
+    regionNameAr: 'صنعاء',
+    cityId: 'ye-san-hadda',
+    cityNameAr: 'شارع حدة',
+    status: 'premium',
+    purpose: 'both',
+    contactPhone: '+967 775 112 233',
+    sellerName: 'مجموعة النخبة للتشطيبات والنجارة',
+    sellerType: 'personal',
+    sellerVerified: true,
+    sellerRating: 4.7,
+    createdAt: 'منذ 4 ساعات',
+    viewsCount: 840,
+    clicksCount: 260,
+    attributes: [
+      { key: 'partnership', labelAr: 'نوع التعاون', valueAr: 'شراكة وعمولة سعي مجزية', labelEn: 'Partnership', valueEn: 'Commission based' }
+    ],
+    media: [
+      { id: 'm-rec-3', url: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=800&auto=format&fit=crop&q=80', isPrimary: true, orderWeight: 0 }
+    ]
+  },
+  {
+    id: 'listing-rec-worker-cv-4',
+    title: 'المؤهلات: ثانوية عامة ودبلوم ميكانيك وسيارات. ابحث عن عمل مشرف في مجال المقاولات أو الصيانة أو النقليات واللوجستيك',
+    description: 'المؤهلات العملية: ثانوية عامة قسم علوم طبيعية، دبلوم ميكانيكا سيارات، دورات في الحاسب الآلي والإنترنت. الخبرات: ابحث عن عمل مشرف في مجال المقاولات أو الصيانة أو النقليات واللوجستيك لا مانع من العمل في أي مكان مناسب.',
+    categoryId: 'jobs',
+    categoryNameAr: 'وظائف',
+    subCategoryId: 'jobs-contracting',
+    subCategoryNameAr: 'يطلب عمل مقاولات',
+    sectionType: 'worker_profiles',
+    adType: 'REQUEST',
+    price: null,
+    currency: 'SAR',
+    priceNegotiable: true,
+    countryId: 'ye',
+    regionId: 'ye-taiz',
+    regionNameAr: 'تعز واليمن',
+    cityId: 'ye-taiz-city',
+    cityNameAr: 'تعز',
+    status: 'premium',
+    purpose: 'call_me',
+    contactPhone: '+967 712 334 455',
+    sellerName: 'خالد عبدالله - مشرف ميداني',
+    sellerType: 'personal',
+    sellerVerified: true,
+    sellerRating: 5.0,
+    createdAt: 'منذ 5 ساعات',
+    viewsCount: 1650,
+    clicksCount: 710,
+    attributes: [
+      { key: 'role', labelAr: 'الوظيفة المطلوبة', valueAr: 'مشرف مقاولات وصيانة ونقليات', labelEn: 'Role', valueEn: 'Supervisor' },
+      { key: 'education', labelAr: 'المؤهل', valueAr: 'دبلوم ميكانيكا وثانوية عامة', labelEn: 'Education', valueEn: 'Diploma' }
+    ],
+    media: [
+      { id: 'm-rec-4', url: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800&auto=format&fit=crop&q=80', isPrimary: true, orderWeight: 0 }
+    ]
+  },
+  // =========================================================================
   // القسم 1: سياحة ومطاعم - إعلانات العمال والكفاءات (Worker Profiles)
   // =========================================================================
   {

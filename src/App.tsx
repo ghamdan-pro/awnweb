@@ -17,6 +17,7 @@ import { MourjanWarningModals } from './components/MourjanWarningModals';
 import { ChatModal } from './components/ChatModal';
 import { SubcategoryDetailView } from './components/SubcategoryDetailView';
 import { OnboardingGuideModal } from './components/OnboardingGuideModal';
+import { MourjanMarketplaceView } from './components/MourjanMarketplaceView';
 import { AuthUser, DEMO_USERS } from './types/auth';
 
 import { CATEGORIES, Category, SubCategory } from './data/categoriesData';
@@ -105,7 +106,7 @@ export default function App() {
   // Offline-First / Cache-First Stale-While-Revalidate Engine & Website Visitor Tracking
   useEffect(() => {
     // 1. Record Website Visitor Count
-    apiService.trackVisit('web').catch(() => {});
+    apiService.trackVisit('web').catch(() => { });
 
     // 2. Instant 0ms load categories & listings from IndexedDB
     localCacheDb.getCachedCategories().then((cachedCats) => {
@@ -149,30 +150,13 @@ export default function App() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatListing, setChatListing] = useState<Listing | null>(null);
 
-  // Dark Mode State
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('awn_dark_mode') === 'true';
-    } catch {
-      return false;
-    }
-  });
-
+  // Unified Light Theme (Dark Mode disabled across app)
   useEffect(() => {
     try {
-      if (isDarkMode) {
-        document.documentElement.classList.add('dark');
-        localStorage.setItem('awn_dark_mode', 'true');
-      } else {
-        document.documentElement.classList.remove('dark');
-        localStorage.setItem('awn_dark_mode', 'false');
-      }
-    } catch {}
-  }, [isDarkMode]);
-
-  const handleToggleDarkMode = () => {
-    setIsDarkMode((prev) => !prev);
-  };
+      document.documentElement.classList.remove('dark');
+      localStorage.removeItem('awn_dark_mode');
+    } catch { }
+  }, []);
 
   // Two-Way Sync handler (Flush local cache & pull fresh categories + 7 days feed)
   const [isSyncing, setIsSyncing] = useState(false);
@@ -212,7 +196,7 @@ export default function App() {
     setCurrentUser(user);
     try {
       localStorage.setItem('awn_current_user', JSON.stringify(user));
-    } catch {}
+    } catch { }
     setIsAuthModalOpen(false);
     setAuthModalReason(null);
 
@@ -234,7 +218,7 @@ export default function App() {
     setCurrentUser(null);
     try {
       localStorage.removeItem('awn_current_user');
-    } catch {}
+    } catch { }
     setIsAccountOpen(false);
   };
 
@@ -260,7 +244,7 @@ export default function App() {
   // Restricted Action: Viewing ad details & seller contact requires authentication
   const handleRequireLogin = (listing: Listing, reason: 'details' | 'contact') => {
     // Record ad click count when user clicks to view details
-    apiService.trackListingClick(listing.id).catch(() => {});
+    apiService.trackListingClick(listing.id).catch(() => { });
     setListings((prev) =>
       prev.map((item) =>
         item.id === listing.id ? { ...item, clicksCount: (item.clicksCount || 0) + 1 } : item
@@ -273,13 +257,13 @@ export default function App() {
           ? `يرجى تسجيل الدخول أولاً للاتصال بالمعلن "${listing.sellerName}" أو مراسلته عبر واتساب.`
           : 'Please log in to contact this seller via phone or WhatsApp.'
         : isAr
-        ? `يرجى تسجيل الدخول للاطلاع على التفاصيل الكاملة لإعلان "${listing.title}" وأرقام التواصل.`
-        : 'Please log in to view full ad details and seller phone number.'
+          ? `يرجى تسجيل الدخول للاطلاع على التفاصيل الكاملة لإعلان "${listing.title}" وأرقام التواصل.`
+          : 'Please log in to view full ad details and seller phone number.'
     );
 
     setPendingActionAfterLogin(() => () => {
       // After login, record ad view and open details modal
-      apiService.trackListingView(listing.id).catch(() => {});
+      apiService.trackListingView(listing.id).catch(() => { });
       setListings((prev) =>
         prev.map((item) =>
           item.id === listing.id ? { ...item, viewsCount: (item.viewsCount || 0) + 1 } : item
@@ -294,16 +278,16 @@ export default function App() {
   // When logged-in user clicks on listing to view details
   const handleOpenDetails = (listing: Listing) => {
     // Increment clicks & views count
-    apiService.trackListingClick(listing.id).catch(() => {});
-    apiService.trackListingView(listing.id).catch(() => {});
+    apiService.trackListingClick(listing.id).catch(() => { });
+    apiService.trackListingView(listing.id).catch(() => { });
     setListings((prev) =>
       prev.map((item) =>
         item.id === listing.id
           ? {
-              ...item,
-              viewsCount: (item.viewsCount || 0) + 1,
-              clicksCount: (item.clicksCount || 0) + 1,
-            }
+            ...item,
+            viewsCount: (item.viewsCount || 0) + 1,
+            clicksCount: (item.clicksCount || 0) + 1,
+          }
           : item
       )
     );
@@ -330,7 +314,7 @@ export default function App() {
       if (cleanPhone && itemPhone === cleanPhone) {
         const itemTitle = item.title.trim().toLowerCase();
         if (itemTitle === normTitle || (itemTitle.length > 8 && normTitle.includes(itemTitle))) {
-          apiService.deleteListing(item.id).catch(() => {});
+          apiService.deleteListing(item.id).catch(() => { });
           return false;
         }
       }
@@ -438,7 +422,7 @@ export default function App() {
             setCurrentUser(adminUser);
             try {
               localStorage.setItem('awn_current_user', JSON.stringify(adminUser));
-            } catch {}
+            } catch { }
           }}
           listings={listings}
           onUpdateListing={handleUpdateListingFromAdmin}
@@ -451,7 +435,7 @@ export default function App() {
 
   // App Content Component (can be rendered plain or inside phone shell)
   const appContent = (
-    <div className={`min-h-screen flex flex-col transition-colors duration-200 ${isDarkMode ? 'dark bg-slate-950 text-slate-100' : 'bg-[#f4f5f7] text-[#1e1e24]'} ${isAr ? 'rtl' : 'ltr'} text-right`}>
+    <div className={`min-h-screen flex flex-col bg-[#f4f5f7] text-[#1e1e24] ${isAr ? 'rtl' : 'ltr'} text-right`}>
       {/* Header */}
       <Header
         currentRegion={selectedRegion}
@@ -475,312 +459,123 @@ export default function App() {
         lang={lang}
         onToggleLang={() => setLang((prev) => (prev === 'ar' ? 'en' : 'ar'))}
         onOpenRules={() => setWarningType('publishing_rules')}
-        isDarkMode={isDarkMode}
-        onToggleDarkMode={handleToggleDarkMode}
         onSync={handleSync}
         isSyncing={isSyncing}
       />
 
       {/* Main Container */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-4 py-4 sm:py-6">
-        {/* Hero Banner / Mourjan Identity Bar */}
-        <div className="bg-gradient-to-r from-[#68142c] via-[#591024] to-[#450a1a] rounded-2xl p-4 sm:p-6 text-white mb-6 shadow-md border border-amber-500/30 relative overflow-hidden">
-          {/* Subtle logo watermark background */}
-          <div className="absolute left-[-20px] top-[-20px] w-64 h-64 opacity-10 pointer-events-none">
-            <img
-              src="/assets/aistudio/WhatsApp_Image_2026-10-26_at_8.27.25_PM_c771822c.jpeg"
-              alt=""
-              className="w-full h-full object-contain filter invert"
-            />
-          </div>
+      <main className="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-6">
+        {/* Core Marketplace Directory Layout (Matching Images 1, 2, and 3) */}
+        <MourjanMarketplaceView
+          categories={categories}
+          listings={listings}
+          selectedCategoryId={selectedCategoryId}
+          selectedSubCategoryId={selectedSubCategoryId}
+          onSelectCategory={(catId, subId) => {
+            setSelectedCategoryId(catId);
+            setSelectedSubCategoryId(subId);
+          }}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onOpenDetails={handleOpenDetails}
+          onRequireLogin={handleRequireLogin}
+          currentUser={currentUser}
+          selectedRegion={selectedRegion}
+          isAr={isAr}
+        />
 
-          <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-center sm:text-right">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/20 text-amber-300 text-xs font-bold mb-2 border border-amber-400/30">
-                <Sparkles size={14} />
-                <span>{isAr ? 'الوسيط المجاني للأعمال والخدمات في اليمن' : 'The Free Broker for Jobs & Services'}</span>
-              </div>
-              <h1 className="text-xl sm:text-2xl font-black text-white leading-tight">
-                {isAr ? 'عون يمن: بين مقدم الخدمة وطالبها، وبين العامل وصاحب العمل' : 'Awn Yemen: Connecting Service Providers & Seekers'}
-              </h1>
-              <p className="text-xs sm:text-sm text-rose-100/90 mt-1 max-w-xl">
-                {isAr
-                  ? 'سوق إعلانات مبوبة متكامل يشمل الوظائف، الخدمات، العقارات، والسيارات في كافة محافظات الجمهورية اليمنية.'
-                  : 'Classifieds marketplace covering jobs, services, cars, and real estate in all Yemeni governorates.'}
-              </p>
-            </div>
-
-            {/* Quick Action buttons */}
-            <div className="flex items-center gap-2.5 shrink-0">
-              <button
-                onClick={() => handleOpenPostAd()}
-                className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 font-black rounded-xl text-sm shadow-md transition-all active:scale-95"
-              >
-                <PlusCircle size={18} />
-                <span>{isAr ? 'أضف إعلانك الآن مجاناً' : 'Post Free Ad'}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Featured Ads VIP Spotlight Bar (Visible on Home Page) */}
-        {!selectedCategoryId && !searchQuery.trim() && listings.some((l) => l.status === 'premium') && (
-          <div className="mb-6 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-slate-50 border border-amber-300/80 rounded-2xl p-4 shadow-xs">
-            <div className="flex items-center justify-between mb-3">
+        {/* If in Stage 1 (Home - no category and no subcategory selected):
+            Show the full feed / latest listings below the featured section */}
+        {!selectedCategoryId && !selectedSubCategoryId && (
+          <div className="space-y-4 pt-4 border-t border-slate-200">
+            {/* Active Filters Bar & Sorter */}
+            <div className="bg-white rounded-xl p-3.5 border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <span className="p-1.5 bg-amber-500 text-slate-950 rounded-lg shadow-xs">
-                  <Sparkles size={16} className="fill-slate-950" />
+                <span className="font-black text-sm text-slate-900">
+                  {isAr ? 'أحدث الإعلانات في اليمن' : 'All Listings'}
                 </span>
+                <span className="text-xs bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded-full">
+                  {filteredListings.length} {isAr ? 'إعلان متاح' : 'Ads found'}
+                </span>
+              </div>
+
+              {/* Filter Tabs */}
+              <div className="flex items-center gap-1.5 overflow-x-auto text-xs font-bold">
+                <button
+                  onClick={() => setFilterTab('all')}
+                  className={`px-3 py-1.5 rounded-lg transition-colors ${
+                    filterTab === 'all'
+                      ? 'bg-[#68142c] text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {isAr ? 'الكل' : 'All'}
+                </button>
+                <button
+                  onClick={() => setFilterTab('premium')}
+                  className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 ${
+                    filterTab === 'premium'
+                      ? 'bg-amber-500 text-slate-950 font-black shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  <Sparkles size={12} />
+                  <span>{isAr ? 'مميز' : 'Featured'}</span>
+                </button>
+                <button
+                  onClick={() => setFilterTab(filterTab === 'price_low' ? 'price_high' : 'price_low')}
+                  className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 ${
+                    filterTab === 'price_low' || filterTab === 'price_high'
+                      ? 'bg-[#68142c] text-white font-bold'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  <ArrowUpDown size={12} />
+                  <span>
+                    {filterTab === 'price_low'
+                      ? (isAr ? 'السعر: الأقل أولاً' : 'Price: Low to High')
+                      : filterTab === 'price_high'
+                        ? (isAr ? 'السعر: الأعلى أولاً' : 'Price: High to Low')
+                        : (isAr ? 'ترتيب بالأسعار' : 'Sort by Price')}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Listings Feed Cards */}
+            {filteredListings.length > 0 ? (
+              <div className="space-y-3">
+                {filteredListings.map((listing) => (
+                  <ListingCard
+                    key={listing.id}
+                    listing={listing}
+                    currentUser={currentUser}
+                    onOpenDetails={handleOpenDetails}
+                    onRequireLogin={handleRequireLogin}
+                    onToggleBookmark={handleToggleBookmark}
+                    lang={lang}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl p-12 text-center border border-slate-200 shadow-xs space-y-4">
+                <div className="w-16 h-16 rounded-full bg-slate-100 text-slate-400 mx-auto flex items-center justify-center">
+                  <Filter size={32} />
+                </div>
                 <div>
-                  <h2 className="font-black text-slate-900 text-sm sm:text-base flex items-center gap-1.5 font-['Cairo']">
-                    <span>{isAr ? 'إعلانات مميزة VIP ★' : 'VIP Featured Listings ★'}</span>
-                    <span className="text-[10px] bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded-full">
-                      {isAr ? 'مثبتة بالصفحة الرئيسية' : 'Pinned on Home'}
-                    </span>
-                  </h2>
-                  <p className="text-[11px] text-slate-500">
+                  <h3 className="font-bold text-slate-800 text-base">
+                    {isAr ? 'لا توجد إعلانات مطابقة لمعايير البحث في هذه المنطقة' : 'No listings match your criteria'}
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">
                     {isAr
-                      ? 'إعلانات معتمدة ومميزة تحظى بأعلى أولوية ظهور ومشاهدات في منصة عون يمن'
-                      : 'Verified featured listings with top priority and visibility'}
+                      ? 'جرب تغيير المحافظة أو مسح كلمات البحث أو إزالة التصفية لمشاهدة إعلانات أخرى.'
+                      : 'Try changing the governorate or clearing filters.'}
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => setFilterTab('premium')}
-                className="text-xs font-bold text-amber-700 hover:text-amber-800 flex items-center gap-1"
-              >
-                <span>{isAr ? 'عرض كل المميز' : 'View All'}</span>
-                <span>←</span>
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {listings
-                .filter((item) => item.status === 'premium')
-                .slice(0, 3)
-                .map((featuredItem) => (
-                  <div
-                    key={`vip-${featuredItem.id}`}
-                    onClick={() => {
-                      if (!currentUser) {
-                        handleRequireLogin(featuredItem, 'details');
-                      } else {
-                        handleOpenDetails(featuredItem);
-                      }
-                    }}
-                    className="bg-white rounded-xl border border-amber-300/90 hover:border-amber-400 p-3 shadow-xs hover:shadow-md transition-all cursor-pointer flex gap-3 group relative overflow-hidden ring-1 ring-amber-400/20"
-                  >
-                    <div className="w-20 h-20 rounded-lg bg-slate-100 overflow-hidden shrink-0 relative">
-                      <img
-                        src={featuredItem.media[0]?.url || '/assets/aistudio/WhatsApp_Image_2026-10-26_at_10.38.17_PM_f6350e73.jpeg'}
-                        alt={featuredItem.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                      />
-                      <span className="absolute top-1 right-1 bg-amber-500 text-slate-950 text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs">
-                        ★ مميز
-                      </span>
-                    </div>
-                    <div className="flex-1 min-w-0 flex flex-col justify-between">
-                      <div>
-                        <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1">
-                          <span className="font-bold text-[#68142c] truncate">{featuredItem.subCategoryNameAr}</span>
-                          <span className="truncate">{featuredItem.cityNameAr}</span>
-                        </div>
-                        <h4 className="font-bold text-slate-900 text-xs line-clamp-2 group-hover:text-[#68142c] transition-colors leading-snug">
-                          {featuredItem.title}
-                        </h4>
-                      </div>
-                      <div className="flex items-center justify-between mt-1 text-[11px]">
-                        <span className="font-black text-amber-700">
-                          {featuredItem.price ? `${featuredItem.price.toLocaleString()} ${featuredItem.currency}` : (isAr ? 'حسب الاتفاق' : 'Negotiable')}
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-semibold truncate">{featuredItem.sellerName}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-            </div>
+            )}
           </div>
         )}
-
-        {/* Layout Grid: Left Sidebar Categories (or top on mobile) & Right Listings Feed */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Categories Sidebar */}
-          <aside className="lg:col-span-4 space-y-4">
-            <CategoryNav
-              categories={categories}
-              selectedCategoryId={selectedCategoryId}
-              selectedSubCategoryId={selectedSubCategoryId}
-              onSelectCategory={(cat, sub) => {
-                setSelectedCategoryId(cat?.id);
-                setSelectedSubCategoryId(sub?.id);
-              }}
-              lang={lang}
-            />
-
-            {/* Quick Location Badge Box */}
-            <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                  <MapPin size={15} className="text-[#68142c]" />
-                  <span>{isAr ? 'نطاق البحث الجغرافي' : 'Search Location'}</span>
-                </span>
-                <button
-                  onClick={() => setIsRegionModalOpen(true)}
-                  className="text-xs text-[#68142c] font-bold hover:underline"
-                >
-                  {isAr ? 'تغيير' : 'Change'}
-                </button>
-              </div>
-              <div className="p-2.5 bg-slate-50 rounded-lg text-xs font-bold text-slate-900 border border-slate-200/80 flex items-center justify-between">
-                <span>
-                  {isAr ? `${selectedRegion.nameAr}` : `${selectedRegion.nameEn}`}
-                  {selectedCity ? ` - ${isAr ? selectedCity.nameAr : selectedCity.nameEn}` : ''}
-                </span>
-                <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold">
-                  {isAr ? 'نشط' : 'Active'}
-                </span>
-              </div>
-            </div>
-
-            {/* Safety & Scam Awareness Notice Trigger */}
-            <div
-              onClick={() => setWarningType('scam_warning')}
-              className="bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl p-3.5 text-xs text-amber-900 cursor-pointer transition-colors flex items-center gap-2.5"
-            >
-              <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
-              <div className="flex-1">
-                <strong className="block mb-0.5">{isAr ? 'هام جداً: تنبيه الأمان ومكافحة الاحتيال' : 'Important Safety Notice'}</strong>
-                <span className="text-[11px] text-amber-800/90">{isAr ? 'اضغط لقراءة إرشادات الحماية في عون يمن' : 'Click to read protection guidelines'}</span>
-              </div>
-            </div>
-          </aside>
-
-          {/* Main Listings Feed Column */}
-          <section className="lg:col-span-8 space-y-4">
-            {activeCategory && activeSubCategory ? (
-              /* شاشة التصنيف التفصيلي عند اختيار قسم فرعي مثل مطاعم وسياحة مع الأقسام الثلاثة */
-              <SubcategoryDetailView
-                category={activeCategory}
-                subCategory={activeSubCategory}
-                listings={listings}
-                currentUser={currentUser}
-                onBack={() => setSelectedSubCategoryId(undefined)}
-                onOpenDetails={handleOpenDetails}
-                onRequireLogin={handleRequireLogin}
-                onOpenPostAd={(preselectedSection) => handleOpenPostAd(preselectedSection)}
-                lang={lang}
-              />
-            ) : (
-              <>
-                {/* Active Filters Bar & Sorter */}
-                <div className="bg-white rounded-xl p-3.5 border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
-                  {/* Category & Region Breadcrumb Title */}
-                  <div className="flex items-center gap-2">
-                    <span className="font-black text-sm text-slate-900">
-                      {activeCategory ? (isAr ? activeCategory.nameAr : activeCategory.nameEn) : (isAr ? 'جميع الإعلانات' : 'All Listings')}
-                      {activeSubCategory ? ` / ${isAr ? activeSubCategory.nameAr : activeSubCategory.nameEn}` : ''}
-                    </span>
-                    <span className="text-xs bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded-full">
-                      {filteredListings.length} {isAr ? 'إعلان متاح' : 'Ads found'}
-                    </span>
-                  </div>
-
-                  {/* Filter Tabs */}
-                  <div className="flex items-center gap-1.5 overflow-x-auto text-xs font-bold">
-                    <button
-                      onClick={() => setFilterTab('all')}
-                      className={`px-3 py-1.5 rounded-lg transition-colors ${filterTab === 'all'
-                        ? 'bg-[#68142c] text-white shadow-xs'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
-                    >
-                      {isAr ? 'الكل' : 'All'}
-                    </button>
-                    <button
-                      onClick={() => setFilterTab('premium')}
-                      className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 ${filterTab === 'premium'
-                        ? 'bg-amber-500 text-slate-950 font-black shadow-xs'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
-                    >
-                      <Sparkles size={12} />
-                      <span>{isAr ? 'مميز' : 'Featured'}</span>
-                    </button>
-                    <button
-                      onClick={() => setFilterTab(filterTab === 'price_low' ? 'price_high' : 'price_low')}
-                      className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 ${filterTab === 'price_low' || filterTab === 'price_high'
-                        ? 'bg-[#68142c] text-white font-bold'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
-                    >
-                      <ArrowUpDown size={12} />
-                      <span>
-                        {filterTab === 'price_low'
-                          ? (isAr ? 'السعر: الأقل أولاً' : 'Price: Low to High')
-                          : filterTab === 'price_high'
-                            ? (isAr ? 'السعر: الأعلى أولاً' : 'Price: High to Low')
-                            : (isAr ? 'ترتيب بالأسعار' : 'Sort by Price')}
-                      </span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Listings Grid / List */}
-                {filteredListings.length > 0 ? (
-                  <div className="space-y-3">
-                    {filteredListings.map((listing) => (
-                      <ListingCard
-                        key={listing.id}
-                        listing={listing}
-                        currentUser={currentUser}
-                        onOpenDetails={handleOpenDetails}
-                        onRequireLogin={handleRequireLogin}
-                        onToggleBookmark={handleToggleBookmark}
-                        lang={lang}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="bg-white rounded-2xl p-12 text-center border border-slate-200 shadow-xs space-y-4">
-                    <div className="w-16 h-16 rounded-full bg-slate-100 text-slate-400 mx-auto flex items-center justify-center">
-                      <Filter size={32} />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-slate-800 text-base">
-                        {isAr ? 'لا توجد إعلانات مطابقة لمعايير البحث في هذه المنطقة' : 'No listings match your criteria'}
-                      </h3>
-                      <p className="text-xs text-slate-500 mt-1">
-                        {isAr
-                          ? 'جرب تغيير المحافظة أو مسح كلمات البحث أو إزالة التصفية لمشاهدة إعلانات أخرى.'
-                          : 'Try changing the governorate or clearing filters.'}
-                      </p>
-                    </div>
-                    <div className="flex items-center justify-center gap-3 pt-2">
-                      <button
-                        onClick={() => {
-                          setSelectedCategoryId(undefined);
-                          setSelectedSubCategoryId(undefined);
-                          setSearchQuery('');
-                          setFilterTab('all');
-                        }}
-                        className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-lg transition-colors"
-                      >
-                        {isAr ? 'عرض كل الإعلانات' : 'Reset Filters'}
-                      </button>
-                      <button
-                        onClick={() => handleOpenPostAd()}
-                        className="px-4 py-2 bg-[#68142c] hover:bg-[#520f23] text-white text-xs font-bold rounded-lg transition-colors"
-                      >
-                        {isAr ? 'كن أول من ينشر إعلاناً هنا' : 'Post the First Ad Here'}
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </section>
-        </div>
       </main>
 
       {/* Floating Action Button for Help / Quick Navigation */}
@@ -919,7 +714,7 @@ export default function App() {
           setCurrentUser(updated);
           try {
             localStorage.setItem('awn_current_user', JSON.stringify(updated));
-          } catch {}
+          } catch { }
         }}
       />
 
@@ -952,7 +747,7 @@ export default function App() {
           setCurrentUser(updated);
           try {
             localStorage.setItem('awn_current_user', JSON.stringify(updated));
-          } catch {}
+          } catch { }
         }}
         lang={lang}
       />
