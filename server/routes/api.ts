@@ -14,6 +14,11 @@ import { getCategories } from '../controllers/categoriesController.js';
 import { getRegions } from '../controllers/regionsController.js';
 import { getChatRooms, sendMessage } from '../controllers/chatController.js';
 import { getAnalyticsStats, trackPlatformVisit } from '../controllers/analyticsController.js';
+import {
+  getCommercialContent,
+  updateCommercialBanners,
+  updateCommercialTickers,
+} from '../controllers/commercialController.js';
 
 const router = Router();
 
@@ -42,6 +47,11 @@ router.get('/regions', getRegions);
 // Chat Endpoints
 router.get('/chat/rooms', getChatRooms);
 router.post('/chat/send', sendMessage);
+
+// Commercial Ads & Ticker Notifications Endpoints (Synced with Mobile App)
+router.get('/commercial/all', getCommercialContent);
+router.post('/commercial/banners', updateCommercialBanners);
+router.post('/commercial/tickers', updateCommercialTickers);
 
 // Health check and Supabase status
 router.get('/health', async (req, res) => {

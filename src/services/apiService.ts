@@ -352,5 +352,65 @@ export const apiService = {
     }
     return CATEGORIES;
   },
+
+  // 11. Commercial Ads & Ticker Notifications (Live Mobile Sync)
+  async getCommercialContent(): Promise<{ banners: any[]; tickers: any[] }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/commercial/all`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data) {
+          return {
+            banners: json.data.allBanners || json.data.banners || [],
+            tickers: json.data.allTickers || json.data.tickers || [],
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('apiService getCommercialContent failed:', e);
+    }
+
+    // LocalStorage fallback
+    try {
+      const savedBanners = localStorage.getItem('awn_commercial_banners');
+      const savedTickers = localStorage.getItem('awn_commercial_tickers');
+      if (savedBanners || savedTickers) {
+        return {
+          banners: savedBanners ? JSON.parse(savedBanners) : [],
+          tickers: savedTickers ? JSON.parse(savedTickers) : [],
+        };
+      }
+    } catch (_) {}
+
+    return { banners: [], tickers: [] };
+  },
+
+  async saveCommercialBanners(banners: any[]): Promise<boolean> {
+    try {
+      localStorage.setItem('awn_commercial_banners', JSON.stringify(banners));
+      const res = await fetch(`${API_BASE_URL}/commercial/banners`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ banners }),
+      });
+      return res.ok;
+    } catch (e) {
+      return true; // LocalStorage succeeded
+    }
+  },
+
+  async saveCommercialTickers(tickers: any[]): Promise<boolean> {
+    try {
+      localStorage.setItem('awn_commercial_tickers', JSON.stringify(tickers));
+      const res = await fetch(`${API_BASE_URL}/commercial/tickers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tickers }),
+      });
+      return res.ok;
+    } catch (e) {
+      return true; // LocalStorage succeeded
+    }
+  },
 };
 

@@ -47,7 +47,11 @@ import {
   Play,
   Ban,
   AlertOctagon,
-  Copy
+  Copy,
+  Megaphone,
+  Radio,
+  Sparkles,
+  Tv
 } from 'lucide-react';
 import { Listing } from '../data/mockListings';
 import { CATEGORIES, Category, SubCategory } from '../data/categoriesData';
@@ -80,11 +84,137 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   const isAdmin = currentUser?.role === 'admin';
 
   // Navigation tab
-  const [activeTab, setActiveTab] = useState<'kpi' | 'listings' | 'categories' | 'users' | 'system'>('kpi');
+  const [activeTab, setActiveTab] = useState<'kpi' | 'listings' | 'categories' | 'commercial' | 'users' | 'system'>('kpi');
   const [searchFilter, setSearchFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [syncStatus, setSyncStatus] = useState<'idle' | 'testing' | 'success'>('idle');
+
+  // Commercial Ads & Ticker Notifications state (Live Mobile Sync)
+  const [commercialBanners, setCommercialBanners] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem('awn_commercial_banners');
+      if (saved) return JSON.parse(saved);
+    } catch (_) {}
+    return [
+      {
+        id: 'banner-1',
+        tag: 'إعلان تجاري مميز',
+        location: 'صنعاء - عدن',
+        title: 'مجموعة النخبة للتجارة والاستيراد العام',
+        subtitle: 'توزيع مباشر وتوريدات جملة للمحلات والمراكز التجارية',
+        icon: 'business',
+        gradientStart: '#68142C',
+        gradientEnd: '#991B1B',
+        badgeColor: '#F59E0B',
+        buttonText: 'تواصل 📞',
+        actionType: 'contact',
+        contactName: 'مجموعة النخبة التجارية',
+        contactPhone: '+967 777 123 456',
+        isActive: true,
+        order: 1,
+      },
+      {
+        id: 'banner-2',
+        tag: 'معرض سيارات معتمد',
+        location: 'صنعاء - شارع الستين',
+        title: 'معارض الرواد للسيارات والمعدات الحديثة',
+        subtitle: 'أحدث الموديلات وفحص معتمد مع تسهيلات وخصم نقدي',
+        icon: 'car',
+        gradientStart: '#0F172A',
+        gradientEnd: '#1E293B',
+        badgeColor: '#38BDF8',
+        buttonText: 'عرض 🚗',
+        actionType: 'cars',
+        isActive: true,
+        order: 2,
+      },
+      {
+        id: 'banner-3',
+        tag: 'استثمار وتطوير عقاري',
+        location: 'عدن - خور مكسر والمنصورة',
+        title: 'أبراج الأفق السكنية والتجارية الفاخرة',
+        subtitle: 'شقق ومكاتب ومحلات تجارية للتمليك والإيجار بأسعار مناسبة',
+        icon: 'building',
+        gradientStart: '#064E3B',
+        gradientEnd: '#047857',
+        badgeColor: '#34D399',
+        buttonText: 'حجز 🏢',
+        actionType: 'real_estate',
+        isActive: true,
+        order: 3,
+      },
+      {
+        id: 'banner-4',
+        tag: 'مساحة إعلانية تجارية',
+        location: 'عموم المحافظات',
+        title: 'روّج لنشاطك التجاري وثبّت إعلانك أمام آلاف المشترين',
+        subtitle: 'اشترك بالباقة المميزة واحصل على ظهور فوري واستثنائي',
+        icon: 'star',
+        gradientStart: '#78350F',
+        gradientEnd: '#D97706',
+        badgeColor: '#FEF08A',
+        buttonText: 'أعلن الآن 📢',
+        actionType: 'post',
+        isActive: true,
+        order: 4,
+      },
+    ];
+  });
+
+  const [commercialTickers, setCommercialTickers] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem('awn_commercial_tickers');
+      if (saved) return JSON.parse(saved);
+    } catch (_) {}
+    return [
+      {
+        id: 'tick-1',
+        text: '⚡ إشعار تجاري: مجمع اليمن التجاري والاستثماري يعلن عن فرص استثمارية وتأجير مساحات بصنعاء',
+        tag: 'إشعار تجاري',
+        isActive: true,
+        order: 1,
+      },
+      {
+        id: 'tick-2',
+        text: '🔥 عرض خاص: خصم 40% على اشتراكات الشركات والمتاجر في منصة عون يمن',
+        tag: 'عرض خاص',
+        isActive: true,
+        order: 2,
+      },
+      {
+        id: 'tick-3',
+        text: '💼 شركة رواد التقنية تطلب مطورين ومسوقين فوراً في عدن وصنعاء',
+        tag: 'وظائف',
+        isActive: true,
+        order: 3,
+      },
+      {
+        id: 'tick-4',
+        text: '🚗 عروض مميزة من وكالات السيارات المعتمدة بضمان شامل وفحص فوري',
+        tag: 'سيارات',
+        isActive: true,
+        order: 4,
+      },
+      {
+        id: 'tick-5',
+        text: '📢 أعلن عن نشاطك التجاري هنا ليصل لآلاف الزوار والعملاء يومياً في كافة المحافظات',
+        tag: 'ترويج',
+        isActive: true,
+        order: 5,
+      },
+    ];
+  });
+
+  const [isCommercialSyncing, setIsCommercialSyncing] = useState(false);
+  const [commercialSyncMsg, setCommercialSyncMsg] = useState<string | null>(null);
+
+  // Modal editing states
+  const [isBannerModalOpen, setIsBannerModalOpen] = useState(false);
+  const [editingBanner, setEditingBanner] = useState<any | null>(null);
+
+  const [isTickerModalOpen, setIsTickerModalOpen] = useState(false);
+  const [editingTicker, setEditingTicker] = useState<any | null>(null);
 
   // Categories state for live management
   const [categoriesList, setCategoriesList] = useState<Category[]>(() => {
@@ -736,6 +866,20 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
           >
             <FolderTree size={16} />
             <span>{isAr ? `الأقسام والقوائم (${categoriesList.length} رئيسي • 87 فرعي)` : `Categories (${categoriesList.length})`}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('commercial')}
+            className={`py-3 px-3 flex items-center gap-2 border-b-2 transition-all shrink-0 ${activeTab === 'commercial'
+              ? 'border-amber-400 text-amber-400 font-black'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+              }`}
+          >
+            <Megaphone size={16} className="text-amber-400" />
+            <span>{isAr ? 'الإعلانات التجارية والإشعارات' : 'Commercial Ads & Tickers'}</span>
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-500/20 text-amber-300 font-bold">
+              {commercialBanners.filter((b) => b.isActive).length + commercialTickers.filter((t) => t.isActive).length}
+            </span>
           </button>
 
           <button
