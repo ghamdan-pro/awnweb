@@ -104,7 +104,9 @@ export const apiService = {
     // In-memory fallback
     const rawContent = listingData.description || (listingData as any).content || '';
     const firstSentence = rawContent.trim().split('\n')[0].slice(0, 50);
-    const derivedTitle = listingData.title || (firstSentence ? `${firstSentence}...` : 'إعلان بدون عنوان');
+    const fallbackTitle = listingData.subCategoryNameAr || listingData.categoryNameAr || 'إعلان جديد';
+    const derivedTitle = (listingData.title || (firstSentence ? `${firstSentence}...` : fallbackTitle))
+      .replace(/مسودة بدون عنوان|إعلان بدون عنوان|بدون عنوان/g, '').trim() || fallbackTitle;
     const adType = (listingData.adType || (listingData.sectionType === 'worker_profiles' ? 'REQUEST' : 'OFFER')).toUpperCase() as 'OFFER' | 'REQUEST';
     const isDraft = listingData.status === 'draft' || listingData.status === 'DRAFT';
 

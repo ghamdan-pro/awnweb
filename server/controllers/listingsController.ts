@@ -299,7 +299,8 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
     // Auto-derive title from first line or sentence if not provided
     const trimmedContent = adContent.trim();
     const firstLine = trimmedContent.split('\n')[0].trim();
-    const derivedTitle = title || (firstLine.length > 55 ? `${firstLine.slice(0, 52)}...` : firstLine) || (isDraft ? 'مسودة بدون عنوان' : 'إعلان جديد');
+    const rawTitle = title || (firstLine.length > 55 ? `${firstLine.slice(0, 52)}...` : firstLine) || (req.body.subCategoryNameAr || req.body.categoryNameAr || 'إعلان جديد');
+    const derivedTitle = rawTitle.replace(/مسودة بدون عنوان|إعلان بدون عنوان|بدون عنوان/g, '').trim() || (req.body.subCategoryNameAr || req.body.categoryNameAr || 'إعلان جديد');
 
     const finalAdType = (adType || req.body.ad_type || (sectionType === 'worker_profiles' ? 'REQUEST' : 'OFFER')).toUpperCase();
     const finalRegionId = regionId || req.body.governorate_id || 'ye-sanaa';
@@ -695,9 +696,24 @@ export const updateListingStatus = async (req: Request, res: Response): Promise<
       return;
     }
 
+    // Map status safely to Supabase PostgreSQL enum values ('draft', 'pending', 'active', 'premium', 'rejected', 'expired', 'archived')
+    let dbStatus = status;
+    const lower = String(status).toLowerCase().trim();
+    if (lower === 'ended' || lower === 'expired') {
+      dbStatus = 'expired';
+    } else if (lower === 'active' || lower === 'published') {
+      dbStatus = 'active';
+    } else if (lower === 'pending') {
+      dbStatus = 'pending';
+    } else if (lower === 'rejected') {
+      dbStatus = 'rejected';
+    } else if (lower === 'draft') {
+      dbStatus = 'draft';
+    }
+
     // 1. Try Supabase
     try {
-      const { error } = await supabase.from('listings').update({ status }).eq('id', id);
+      const { error } = await supabase.from('listings').update({ status: dbStatus }).eq('id', id);
       if (error) {
         console.error('❌ [Supabase updateListingStatus Error]:', error.message, error.details, error.hint, error.code);
       }

@@ -8,6 +8,8 @@ export interface SubCategory {
   serviceType?: 'individual' | 'company'; // خدمات أفراد vs خدمات شركات
   is_active?: boolean;
   order_weight?: number;
+  isoffersonly?: number | null; // 1 = offers only, 2 = offers & requests, null = inherit from main category
+  isOffersOnly?: boolean;
   fields?: {
     key: string;
     labelAr: string;
@@ -28,7 +30,36 @@ export interface Category {
   color: string;
   is_active?: boolean;
   order_weight?: number;
+  isoffersonly?: number; // 1 = offers only, 2 = offers & requests
+  isOffersOnly?: boolean;
   subcategories: SubCategory[];
+}
+
+/**
+ * Resolves dynamically whether a category/subcategory is Offers Only.
+ * Rule:
+ * - If subcategory has isoffersonly defined (1 or 2), it overrides the parent.
+ * - If subcategory value is null/undefined, it inherits from parent category.
+ * - Value 1: Offers only (true).
+ * - Value 2: Offers and requests (false).
+ */
+export function isOffersOnlyCategory(
+  category?: Category | { id?: string; isoffersonly?: number; isOffersOnly?: boolean; nameAr?: string } | null,
+  subcategory?: SubCategory | { id?: string; isoffersonly?: number | null; isOffersOnly?: boolean } | null
+): boolean {
+  if (subcategory && subcategory.isoffersonly !== undefined && subcategory.isoffersonly !== null) {
+    return Number(subcategory.isoffersonly) === 1;
+  }
+  if (category && category.isoffersonly !== undefined && category.isoffersonly !== null) {
+    return Number(category.isoffersonly) === 1;
+  }
+  if (subcategory?.isOffersOnly !== undefined) {
+    return Boolean(subcategory.isOffersOnly);
+  }
+  if (category?.isOffersOnly !== undefined) {
+    return Boolean(category.isOffersOnly);
+  }
+  return false;
 }
 
 export const CATEGORIES: Category[] = [
@@ -40,6 +71,8 @@ export const CATEGORIES: Category[] = [
     icon: 'Briefcase',
     slug: 'jobs',
     color: '#68142c',
+    isoffersonly: 2,
+    isOffersOnly: false,
     subcategories: [
       { id: 'jobs-culinary', nameAr: 'سياحة ومطاعم', nameEn: 'Hospitality & Restaurants', count: 12, slug: 'culinary', fields: [
         { key: 'role', labelAr: 'المسمى الوظيفي', labelEn: 'Job Title', type: 'select', options: ['شيف / طباخ ذبايح ورز مندي', 'معلم بوفية وسندويشات', 'معلم معصوب وعريكة', 'معلم شاورما ومشويات', 'مساعد طباخ', 'كابتن صالة / ويتر'] },
@@ -98,6 +131,8 @@ export const CATEGORIES: Category[] = [
     icon: 'Wrench',
     slug: 'services',
     color: '#68142c',
+    isoffersonly: 2,
+    isOffersOnly: false,
     subcategories: [
       // === خدمات أفراد (Individual / Artisan Services) ===
       { id: 'serv-electricity', nameAr: 'كهرباء', nameEn: 'Electrician & Electrical', count: 12, slug: 'electricity', serviceType: 'individual', icon: 'zap' },
@@ -144,6 +179,8 @@ export const CATEGORIES: Category[] = [
     icon: 'Building2',
     slug: 'real-estate',
     color: '#68142c',
+    isoffersonly: 2,
+    isOffersOnly: false,
     subcategories: [
       { id: 're-rent-apt', nameAr: 'شقق للإيجار', nameEn: 'Apartments for Rent', count: 32, slug: 'rent-apt', fields: [
         { key: 'rooms', labelAr: 'عدد الغرف', labelEn: 'Bedrooms', type: 'select', options: ['غرفة واحدة', 'غرفتين', '3 غرف', '4 غرف', '5+ غرف'] },
@@ -168,6 +205,8 @@ export const CATEGORIES: Category[] = [
     icon: 'Car',
     slug: 'cars',
     color: '#68142c',
+    isoffersonly: 2,
+    isOffersOnly: false,
     subcategories: [
       { id: 'cars-sale', nameAr: 'سيارات للبيع', nameEn: 'Cars for Sale', count: 45, slug: 'cars-sale', fields: [
         { key: 'make', labelAr: 'الشركة المصنعة', labelEn: 'Make', type: 'select', options: ['تويوتا (Toyota)', 'هيونداي (Hyundai)', 'كيا (Kia)', 'مرسيدس (Mercedes)', 'نيسان (Nissan)', 'لكزس (Lexus)', 'شفروليه (Chevrolet)', 'أخرى'] },
@@ -191,6 +230,8 @@ export const CATEGORIES: Category[] = [
     icon: 'Package',
     slug: 'misc',
     color: '#68142c',
+    isoffersonly: 1,
+    isOffersOnly: true,
     subcategories: [
       { id: 'misc-numbers', nameAr: 'ارقام مميزة', nameEn: 'VIP Phone Numbers', count: 8, slug: 'vip-numbers' },
       { id: 'misc-electronics', nameAr: 'الكترونيات', nameEn: 'Electronics', count: 11, slug: 'electronics' },

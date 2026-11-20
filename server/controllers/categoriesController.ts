@@ -613,6 +613,8 @@ const FALLBACK_CATEGORIES = [
     "icon": "Package",
     "slug": "misc",
     "color": "#68142c",
+    "isoffersonly": 1,
+    "isOffersOnly": true,
     "subcategories": [
       {
         "id": "misc-numbers",
@@ -698,26 +700,50 @@ export const getCategories = async (req: Request, res: Response): Promise<void> 
 
       if (!error && data && data.length > 0) {
         const parents = data.filter((c: any) => !c.parent_id);
-        const hierarchy = parents.map((p: any) => ({
-          id: p.id,
-          nameAr: p.name_ar,
-          nameEn: p.name_en,
-          icon: p.icon_name || 'Briefcase',
-          slug: p.slug,
-          color: p.accent_color || '#68142c',
-          count: 50,
-          subcategories: data
-            .filter((c: any) => c.parent_id === p.id)
-            .map((sub: any) => ({
-              id: sub.id,
-              nameAr: sub.name_ar,
-              nameEn: sub.name_en,
-              icon: sub.icon_name,
-              slug: sub.slug,
-              count: 15,
-              fields: sub.fields || [],
-            })),
-        }));
+        const hierarchy = parents.map((p: any) => {
+          const rawParentOffers = p.isoffersonly ?? p.is_offers_only;
+          const parentOffersVal = rawParentOffers != null
+            ? (typeof rawParentOffers === 'boolean' ? (rawParentOffers ? 1 : 2) : Number(rawParentOffers))
+            : (p.id === 'misc' || p.id === 'Bazer' ? 1 : 2);
+          const parentOffersBool = parentOffersVal === 1;
+
+          return {
+            id: p.id,
+            nameAr: p.name_ar,
+            nameEn: p.name_en,
+            icon: p.icon_name || 'Briefcase',
+            slug: p.slug,
+            color: p.accent_color || '#68142c',
+            count: 50,
+            isoffersonly: parentOffersVal,
+            isOffersOnly: parentOffersBool,
+            subcategories: data
+              .filter((c: any) => c.parent_id === p.id)
+              .map((sub: any) => {
+                const rawSubOffers = sub.isoffersonly ?? sub.is_offers_only;
+                let subOffersVal: number | null = null;
+                if (rawSubOffers != null && rawSubOffers !== '') {
+                  subOffersVal = typeof rawSubOffers === 'boolean'
+                    ? (rawSubOffers ? 1 : 2)
+                    : Number(rawSubOffers);
+                }
+                const effectiveOffersOnly =
+                  subOffersVal != null ? subOffersVal === 1 : parentOffersBool;
+
+                return {
+                  id: sub.id,
+                  nameAr: sub.name_ar,
+                  nameEn: sub.name_en,
+                  icon: sub.icon_name,
+                  slug: sub.slug,
+                  count: 15,
+                  fields: sub.fields || [],
+                  isoffersonly: subOffersVal,
+                  isOffersOnly: effectiveOffersOnly,
+                };
+              }),
+          };
+        });
 
         res.status(200).json({ success: true, source: 'supabase', data: hierarchy });
         return;

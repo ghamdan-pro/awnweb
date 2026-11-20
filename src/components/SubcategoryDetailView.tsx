@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { ArrowRight, Briefcase, UserCheck, PlusCircle, Filter, Sparkles, MapPin, Search, Layers, Tag } from 'lucide-react';
-import { Category, SubCategory } from '../data/categoriesData';
+import { Category, SubCategory, isOffersOnlyCategory } from '../data/categoriesData';
 import { Listing, ListingSectionType } from '../data/mockListings';
 import { AuthUser } from '../types/auth';
 import { CompactPublisherCard } from './CompactPublisherCard';
@@ -29,6 +29,7 @@ export const SubcategoryDetailView: React.FC<SubcategoryDetailViewProps> = ({
   lang,
 }) => {
   const isAr = lang === 'ar';
+  const isOffersOnly = isOffersOnlyCategory(category, subCategory);
   const [activeSection, setActiveSection] = useState<'all' | 'job_vacancies' | 'worker_profiles'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -131,169 +132,183 @@ export const SubcategoryDetailView: React.FC<SubcategoryDetailViewProps> = ({
       {/* =========================================================================
           عرض الأقسام الثلاثة: الكل / عرض / طلب (وحذف البقية)
          ========================================================================= */}
-      <div className="bg-white rounded-2xl p-2 sm:p-3 border border-slate-200 shadow-xs">
-        <div className="text-xs font-bold text-slate-500 mb-2 px-2 flex items-center justify-between">
-          <span>{isAr ? 'اختر تصنيف الإعلانات المعروضة:' : 'Select Ad Classification:'}</span>
-          <span className="text-[11px] text-slate-400">
-            {subCategoryListings.length} {isAr ? 'إعلان منشور' : 'Total Ads'}
+      {/* Classification Switcher (Only shown if NOT offers-only category) */}
+      {isOffersOnly ? (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 flex items-center justify-between text-xs text-emerald-900 shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
+              <Tag size={18} />
+            </div>
+            <div>
+              <span className="font-bold text-xs sm:text-sm block text-emerald-950">
+                {isAr ? `جميع إعلانات ${subCategory.nameAr} عروض مباشرة` : `All listings in ${subCategory.nameEn} are direct offers`}
+              </span>
+              <span className="text-[10px] text-emerald-700 block">
+                {isAr ? 'يتم عرض وتصفح كافة الإعلانات فوراً' : 'Browse all available listings directly'}
+              </span>
+            </div>
+          </div>
+          <span className="text-xs font-black px-2.5 py-1 rounded-full bg-emerald-600 text-white">
+            {totalCount} {isAr ? 'إعلان' : 'Ads'}
           </span>
         </div>
+      ) : (
+        <div className="bg-white rounded-2xl p-2 sm:p-3 border border-slate-200 shadow-xs">
+          <div className="text-xs font-bold text-slate-500 mb-2 px-2 flex items-center justify-between">
+            <span>{isAr ? 'اختر تصنيف الإعلانات المعروضة:' : 'Select Ad Classification:'}</span>
+            <span className="text-[11px] text-slate-400">
+              {subCategoryListings.length} {isAr ? 'إعلان منشور' : 'Total Ads'}
+            </span>
+          </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          {/* 1. الكل (All) */}
-          <button
-            onClick={() => setActiveSection('all')}
-            className={`p-3 rounded-xl border text-right transition-all flex items-center justify-between gap-3 ${
-              activeSection === 'all'
-                ? 'bg-gradient-to-l from-slate-100 to-white border-slate-800 text-slate-950 shadow-xs ring-2 ring-slate-800/20'
-                : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <div
-                className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
-                  activeSection === 'all'
-                    ? 'bg-slate-800 text-white shadow-xs'
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {/* 1. الكل (All) */}
+            <button
+              onClick={() => setActiveSection('all')}
+              className={`p-3 rounded-xl border text-right transition-all flex items-center justify-between gap-3 ${activeSection === 'all'
+                  ? 'bg-gradient-to-l from-slate-100 to-white border-slate-800 text-slate-950 shadow-xs ring-2 ring-slate-800/20'
+                  : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <div
+                  className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${activeSection === 'all'
+                      ? 'bg-slate-800 text-white shadow-xs'
+                      : 'bg-slate-200 text-slate-700'
+                    }`}
+                >
+                  <Layers size={20} />
+                </div>
+                <div>
+                  <span className="font-bold text-xs sm:text-sm block">
+                    {isAr ? 'الكل' : 'All Listings'}
+                  </span>
+                  <span className="text-[10px] text-slate-500 block">
+                    {isAr ? 'جميع العروض والطلبات' : 'All offers & requests'}
+                  </span>
+                </div>
+              </div>
+
+              <span
+                className={`text-xs font-black px-2 py-0.5 rounded-full ${activeSection === 'all'
+                    ? 'bg-slate-800 text-white'
                     : 'bg-slate-200 text-slate-700'
-                }`}
+                  }`}
               >
-                <Layers size={20} />
-              </div>
-              <div>
-                <span className="font-bold text-xs sm:text-sm block">
-                  {isAr ? 'الكل' : 'All Listings'}
-                </span>
-                <span className="text-[10px] text-slate-500 block">
-                  {isAr ? 'جميع العروض والطلبات' : 'All offers & requests'}
-                </span>
-              </div>
-            </div>
+                {totalCount}
+              </span>
+            </button>
 
-            <span
-              className={`text-xs font-black px-2 py-0.5 rounded-full ${
-                activeSection === 'all'
-                  ? 'bg-slate-800 text-white'
-                  : 'bg-slate-200 text-slate-700'
-              }`}
-            >
-              {totalCount}
-            </span>
-          </button>
-
-          {/* 2. عرض (Offers) */}
-          <button
-            onClick={() => setActiveSection('job_vacancies')}
-            className={`p-3 rounded-xl border text-right transition-all flex items-center justify-between gap-3 ${
-              activeSection === 'job_vacancies'
-                ? 'bg-gradient-to-l from-emerald-50 to-white border-emerald-500 text-emerald-950 shadow-xs ring-2 ring-emerald-500/20'
-                : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <div
-                className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
-                  activeSection === 'job_vacancies'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'bg-emerald-100 text-emerald-800'
+            {/* 2. عرض (Offers) */}
+            <button
+              onClick={() => setActiveSection('job_vacancies')}
+              className={`p-3 rounded-xl border text-right transition-all flex items-center justify-between gap-3 ${activeSection === 'job_vacancies'
+                  ? 'bg-gradient-to-l from-emerald-50 to-white border-emerald-500 text-emerald-950 shadow-xs ring-2 ring-emerald-500/20'
+                  : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
                 }`}
-              >
-                <Tag size={20} />
-              </div>
-              <div>
-                <span className="font-bold text-xs sm:text-sm block text-emerald-950">
-                  {isAr ? 'عرض' : 'Offers'}
-                </span>
-                <span className="text-[10px] text-slate-500 block">
-                  {isAr ? 'فرص عمل وعروض معلنة' : 'Openings & Offerings'}
-                </span>
-              </div>
-            </div>
-
-            <span
-              className={`text-xs font-black px-2 py-0.5 rounded-full ${
-                activeSection === 'job_vacancies'
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-slate-200 text-slate-700'
-              }`}
             >
-              {offersCount}
-            </span>
-          </button>
+              <div className="flex items-center gap-2.5">
+                <div
+                  className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${activeSection === 'job_vacancies'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-emerald-100 text-emerald-800'
+                    }`}
+                >
+                  <Tag size={20} />
+                </div>
+                <div>
+                  <span className="font-bold text-xs sm:text-sm block text-emerald-950">
+                    {isAr ? 'عرض' : 'Offers'}
+                  </span>
+                  <span className="text-[10px] text-slate-500 block">
+                    {isAr ? 'فرص عمل وعروض معلنة' : 'Openings & Offerings'}
+                  </span>
+                </div>
+              </div>
 
-          {/* 3. طلب (Requests) */}
-          <button
-            onClick={() => setActiveSection('worker_profiles')}
-            className={`p-3 rounded-xl border text-right transition-all flex items-center justify-between gap-3 ${
-              activeSection === 'worker_profiles'
-                ? 'bg-gradient-to-l from-blue-50 to-white border-blue-500 text-blue-950 shadow-xs ring-2 ring-blue-500/20'
-                : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <div
-                className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
-                  activeSection === 'worker_profiles'
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'bg-blue-100 text-blue-900'
+              <span
+                className={`text-xs font-black px-2 py-0.5 rounded-full ${activeSection === 'job_vacancies'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-slate-200 text-slate-700'
+                  }`}
+              >
+                {offersCount}
+              </span>
+            </button>
+
+            {/* 3. طلب (Requests) */}
+            <button
+              onClick={() => setActiveSection('worker_profiles')}
+              className={`p-3 rounded-xl border text-right transition-all flex items-center justify-between gap-3 ${activeSection === 'worker_profiles'
+                  ? 'bg-gradient-to-l from-blue-50 to-white border-blue-500 text-blue-950 shadow-xs ring-2 ring-blue-500/20'
+                  : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
                 }`}
-              >
-                <Search size={20} />
-              </div>
-              <div>
-                <span className="font-bold text-xs sm:text-sm block text-blue-950">
-                  {isAr ? 'طلب' : 'Requests'}
-                </span>
-                <span className="text-[10px] text-slate-500 block">
-                  {isAr ? 'باحثين عن عمل وكفاءات' : 'Job Seekers & Requests'}
-                </span>
-              </div>
-            </div>
-
-            <span
-              className={`text-xs font-black px-2 py-0.5 rounded-full ${
-                activeSection === 'worker_profiles'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-200 text-slate-700'
-              }`}
             >
-              {requestsCount}
-            </span>
-          </button>
+              <div className="flex items-center gap-2.5">
+                <div
+                  className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${activeSection === 'worker_profiles'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-blue-100 text-blue-900'
+                    }`}
+                >
+                  <Search size={20} />
+                </div>
+                <div>
+                  <span className="font-bold text-xs sm:text-sm block text-blue-950">
+                    {isAr ? 'طلب' : 'Requests'}
+                  </span>
+                  <span className="text-[10px] text-slate-500 block">
+                    {isAr ? 'باحثين عن عمل وكفاءات' : 'Job Seekers & Requests'}
+                  </span>
+                </div>
+              </div>
+
+              <span
+                className={`text-xs font-black px-2 py-0.5 rounded-full ${activeSection === 'worker_profiles'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-slate-200 text-slate-700'
+                  }`}
+              >
+                {requestsCount}
+              </span>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Explanatory Banner for Active Section */}
-      <div
-        className={`rounded-xl p-3 sm:p-3.5 border text-xs flex items-center justify-between gap-3 ${
-          activeSection === 'job_vacancies'
-            ? 'bg-emerald-50/80 border-emerald-200 text-emerald-900'
-            : activeSection === 'worker_profiles'
-            ? 'bg-blue-50/80 border-blue-200 text-blue-900'
-            : 'bg-slate-100 border-slate-200 text-slate-800'
-        }`}
-      >
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-current animate-pulse"></span>
-          <span className="font-medium">
-            {activeSection === 'job_vacancies' &&
-              (isAr
-                ? 'تعرض هذه القائمة العروض والفرص الشاغرة المنشورة من قبل أصحاب الأعمال والمنشآت.'
-                : 'Displaying available offers and vacancies posted by employers.')}
-            {activeSection === 'worker_profiles' &&
-              (isAr
-                ? 'تعرض هذه القائمة الطلبات والكوادر والمهنيين الراغبين بالعمل مع ملخص خبراتهم.'
-                : 'Displaying candidate requests, job seekers, and professional resumes.')}
-            {activeSection === 'all' &&
-              (isAr
-                ? 'تعرض هذه القائمة جميع الإعلانات المنشورة في هذا التخصص (عروض وطلبات).'
-                : 'Displaying all listings in this section (offers and requests).')}
+      {/* Explanatory Banner for Active Section (Only if NOT offers-only) */}
+      {!isOffersOnly && (
+        <div
+          className={`rounded-xl p-3 sm:p-3.5 border text-xs flex items-center justify-between gap-3 ${activeSection === 'job_vacancies'
+              ? 'bg-emerald-50/80 border-emerald-200 text-emerald-900'
+              : activeSection === 'worker_profiles'
+                ? 'bg-blue-50/80 border-blue-200 text-blue-900'
+                : 'bg-slate-100 border-slate-200 text-slate-800'
+            }`}
+        >
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-current animate-pulse"></span>
+            <span className="font-medium">
+              {activeSection === 'job_vacancies' &&
+                (isAr
+                  ? 'تعرض هذه القائمة العروض والفرص الشاغرة المنشورة من قبل أصحاب الأعمال والمنشآت.'
+                  : 'Displaying available offers and vacancies posted by employers.')}
+              {activeSection === 'worker_profiles' &&
+                (isAr
+                  ? 'تعرض هذه القائمة الطلبات والكوادر والمهنيين الراغبين بالعمل مع ملخص خبراتهم.'
+                  : 'Displaying candidate requests, job seekers, and professional resumes.')}
+              {activeSection === 'all' &&
+                (isAr
+                  ? 'تعرض هذه القائمة جميع الإعلانات المنشورة في هذا التخصص (عروض وطلبات).'
+                  : 'Displaying all listings in this section (offers and requests).')}
+            </span>
+          </div>
+
+          <span className="font-black shrink-0">
+            {displayedListings.length} {isAr ? 'إعلانات' : 'listings'}
           </span>
         </div>
-
-        <span className="font-black shrink-0">
-          {displayedListings.length} {isAr ? 'إعلانات' : 'listings'}
-        </span>
-      </div>
+      )}
 
       {/* =========================================================================
           قائمة الناشرين المختصرة (Compact Publisher Cards Feed)

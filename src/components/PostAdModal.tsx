@@ -14,7 +14,7 @@ import {
   Phone,
   Sparkles,
 } from 'lucide-react';
-import { CATEGORIES, Category } from '../data/categoriesData';
+import { CATEGORIES, Category, isOffersOnlyCategory } from '../data/categoriesData';
 import { COUNTRIES, Region, City } from '../data/yemenRegions';
 import { Listing, ListingSectionType } from '../data/mockListings';
 import { AuthUser } from '../types/auth';
@@ -53,10 +53,10 @@ const uploadImageToSupabase = async (file: File): Promise<string> => {
     extension === 'png'
       ? 'image/png'
       : extension === 'webp'
-      ? 'image/webp'
-      : extension === 'gif'
-      ? 'image/gif'
-      : 'image/jpeg';
+        ? 'image/webp'
+        : extension === 'gif'
+          ? 'image/gif'
+          : 'image/jpeg';
 
   const response = await fetch(
     `${API_CONFIG.SUPABASE_URL}/storage/v1/object/images/${objectKey}`,
@@ -140,6 +140,15 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
   // Resolve active category & subcategories
   const currentCategory = categories.find((c) => c.id === selectedCatId) || categories[0] || CATEGORIES[0];
   const currentSubcategories = currentCategory.subcategories || [];
+  const currentSubcategory = currentSubcategories.find((s) => s.id === selectedSubCatId);
+  const isCurrentOffersOnly = isOffersOnlyCategory(currentCategory, currentSubcategory);
+
+  // Enforce OFFER only if category is offers only
+  useEffect(() => {
+    if (isCurrentOffersOnly && adType !== 'OFFER') {
+      setAdType('OFFER');
+    }
+  }, [isCurrentOffersOnly, adType]);
 
   // Sync initial category & subcategory when opening modal
   useEffect(() => {
@@ -164,7 +173,7 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
         if (savedDraft) {
           setHasSavedDraft(true);
         }
-      } catch {}
+      } catch { }
     }
   }, [isOpen, initialCategoryId, initialSubCatId, categories, currentUser]);
 
@@ -234,7 +243,7 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
     } catch (error: any) {
       setErrorNotice(
         error?.message ||
-          (isAr ? 'فشل رفع الصور، يرجى المحاولة مرة أخرى.' : 'Failed to upload images. Please try again.')
+        (isAr ? 'فشل رفع الصور، يرجى المحاولة مرة أخرى.' : 'Failed to upload images. Please try again.')
       );
     }
 
@@ -248,17 +257,22 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
   // Derive concise title from first sentence of content
   const deriveTitle = (text: string): string => {
     const trimmed = text.trim();
-    if (!trimmed) return isAr ? 'إعلان بدون عنوان' : 'Untitled Ad';
+    const fallbackTitle = isAr
+      ? currentSubcategory?.nameAr || currentCategory?.nameAr || 'إعلان جديد'
+      : currentSubcategory?.nameEn || currentCategory?.nameEn || 'New Ad';
+    if (!trimmed) return fallbackTitle;
     const firstLine = trimmed.split('\n')[0].trim();
     const firstSentence = firstLine.split(/[.!؟]/)[0].trim();
-    return firstSentence.length > 55 ? `${firstSentence.slice(0, 52)}...` : firstSentence || 'إعلان جديد';
+    return firstSentence.length > 55
+      ? `${firstSentence.slice(0, 52)}...`
+      : firstSentence || fallbackTitle;
   };
 
   // Delete saved draft and purge all related input states
   const handleDeleteDraft = () => {
     try {
       localStorage.removeItem('awn_ad_draft');
-    } catch {}
+    } catch { }
     setContent('');
     setUploadedImages([]);
     setPrimaryPhone(currentUser?.phone || '');
@@ -304,11 +318,13 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
 
     const adStatus = isDraft ? 'DRAFT' : isFeatured ? 'PREMIUM' : 'ACTIVE';
 
+    const finalAdType = isCurrentOffersOnly ? 'OFFER' : adType;
+
     const payload: Partial<Listing> = {
       title: derivedTitle,
       description: trimmedContent,
-      adType,
-      sectionType: adType === 'REQUEST' ? 'worker_profiles' : 'job_vacancies',
+      adType: finalAdType,
+      sectionType: finalAdType === 'REQUEST' ? 'worker_profiles' : 'job_vacancies',
       categoryId: selectedCatId,
       categoryNameAr: currentCategory.nameAr,
       subCategoryId: selectedSubCatId,
@@ -372,12 +388,12 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
             ? '✓ تم حفظ الإعلان كمسودة بنجاح'
             : 'Draft saved successfully!'
           : isFeatured
-          ? isAr
-            ? '⭐ تم فحص الإعلان آلياً ونُشر كإعلان مميز للمشتركين بنجاح!'
-            : 'Published as Featured ad!'
-          : isAr
-          ? '✓ تم فحص الإعلان آلياً ونُشر فوراً بنجاح!'
-          : 'Ad verified and published instantly!'
+            ? isAr
+              ? '⭐ تم فحص الإعلان آلياً ونُشر كإعلان مميز للمشتركين بنجاح!'
+              : 'Published as Featured ad!'
+            : isAr
+              ? '✓ تم فحص الإعلان آلياً ونُشر فوراً بنجاح!'
+              : 'Ad verified and published instantly!'
       );
 
       setTimeout(() => {
@@ -481,32 +497,37 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                 {isAr ? 'نوع الإعلان (تحت القسم الفرعي) *' : 'Ad Intent (Offer or Request) *'}
               </label>
-              <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-                <button
-                  type="button"
-                  onClick={() => setAdType('OFFER')}
-                  className={`flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${
-                    adType === 'OFFER'
-                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>{isAr ? 'عـــرض (OFFER)' : 'Offer (Supply)'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAdType('REQUEST')}
-                  className={`flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${
-                    adType === 'REQUEST'
-                      ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                >
-                  <Layers className="w-4 h-4" />
-                  <span>{isAr ? 'طـــلب (REQUEST)' : 'Request (Demand)'}</span>
-                </button>
-              </div>
+              {isCurrentOffersOnly ? (
+                <div className="flex items-center justify-center gap-2 py-2.5 px-3 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 rounded-xl text-xs font-bold">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <span>{isAr ? 'نوع الإعلان: عـــرض فقط (محدد تلقائياً لهذا القسم)' : 'Ad Intent: Offer Only (Category default)'}</span>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <button
+                    type="button"
+                    onClick={() => setAdType('OFFER')}
+                    className={`flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${adType === 'OFFER'
+                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>{isAr ? 'عـــرض (OFFER)' : 'Offer (Supply)'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAdType('REQUEST')}
+                    className={`flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${adType === 'REQUEST'
+                        ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                  >
+                    <Layers className="w-4 h-4" />
+                    <span>{isAr ? 'طـــلب (REQUEST)' : 'Request (Demand)'}</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -660,11 +681,7 @@ export const PostAdModal: React.FC<PostAdModalProps> = ({
                     ? 'السماح بمشاركة أرقام الهاتف مع هذا الإعلان للتواصل'
                     : 'Allow sharing contact phone numbers with this ad'}
                 </span>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
-                  {isAr
-                    ? 'ملاحظة: افتراضياً لا يتم نشر الرقم، ولا ينشر إلا بموافقتك هنا لحماية خصوصيتك'
-                    : 'Note: Phone is not published unless approved here for your privacy'}
-                </span>
+
               </label>
             </div>
           </div>
