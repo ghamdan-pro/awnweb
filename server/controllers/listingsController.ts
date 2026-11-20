@@ -1,8 +1,64 @@
 import { Request, Response } from 'express';
 import { supabase } from '../config/supabase.js';
 import { INITIAL_LISTINGS } from '../../src/data/mockListings.js';
+import { verifyJwt } from '../utils/jwt.js';
 
+const JWT_SECRET = process.env.JWT_SECRET || 'awn_yemen_jwt_super_secret_key_2026';
 const FALLBACK_LISTINGS = [...INITIAL_LISTINGS];
+
+const normalizeModerationText = (value: string): string => value
+  .normalize('NFKC')
+  .replace(/[\u064b-\u065f\u0670\u0640]/g, '')
+  .replace(/[إأآٱ]/g, 'ا')
+  .replace(/ة/g, 'ه')
+  .replace(/ى/g, 'ي')
+  .replace(/ؤ/g, 'و')
+  .replace(/ئ/g, 'ي')
+  .toLowerCase()
+  .replace(/[^\u0621-\u064a\u0660-\u0669a-z0-9]+/g, ' ')
+  .trim()
+  .replace(/\s+/g, ' ');
+
+const getAuthenticatedUser = (req: Request): any | null => {
+  const header = req.headers.authorization;
+  if (!header?.startsWith('Bearer ')) return null;
+  return verifyJwt(header.slice(7), JWT_SECRET);
+};
+
+const normalizePhoneDigits = (value: unknown): string =>
+  String(value ?? '').replace(/\D/g, '');
+
+const getAdModerationReason = (title: string, description: string): string | null => {
+  const text = normalizeModerationText(`${title} ${description}`);
+  const prohibitedGroups: Array<[string[], string]> = [
+    [[
+      'اباحي', 'مواد اباحيه', 'دعاره', 'جنس', 'جنسي', 'تعارف جنسي',
+      'ممارسه جنسيه', 'صور عاريه', 'فيديو عاري', 'مقاطع مخله',
+      'خادش للحياء', 'علاقات غير شرعيه', 'سهرات خاصه', 'مساج خاص', 'شواذ',
+    ], 'مرفوض: يتضمن الإعلان محتوى إباحيًا أو خادشًا للحياء.'],
+    [[
+      'شتم', 'سب', 'قحبه', 'ابن الكلب', 'يا كلب', 'يا حمار', 'حقير',
+      'نذل', 'سافل', 'ملعون',
+    ], 'مرفوض: يتضمن الإعلان سبًا أو شتمًا أو إهانة.'],
+    [[
+      'ارسل رمز التحقق', 'شارك رمز التحقق', 'ارسل كلمه المرور',
+      'بيانات بطاقتك البنكيه', 'ارسل بياناتك البنكيه', 'تحويل رسوم قبل',
+      'ادفع مقدما للتوظيف', 'رسوم توظيف قبل', 'ارباح مضمونه',
+      'ربح مضمون', 'استثمار مضمون', 'ضاعف راس مالك', 'حول قبل الاستلام',
+    ], 'مرفوض: يتضمن الإعلان مؤشرات احتيال أو طلب بيانات أو أموال بصورة مريبة.'],
+    [[
+      'سلاح', 'كلاشنكوف', 'مسدس للبيع', 'رصاص', 'ذخيره', 'قنابل',
+      'طائفيه', 'مذهبيه', 'عنصريه', 'تحريض',
+    ], 'مرفوض: يتضمن الإعلان أسلحة أو محتوى تحريضيًا أو تمييزيًا.'],
+  ];
+
+  for (const [terms, reason] of prohibitedGroups) {
+    if (terms.some((term) => text.includes(normalizeModerationText(term)))) {
+      return reason;
+    }
+  }
+  return null;
+};
 
 export const searchListings = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -67,11 +123,16 @@ export const searchListings = async (req: Request, res: Response): Promise<void>
       if (!error && data && data.length > 0) {
         listings = data.map((item: any) => ({
           id: item.id,
+          seller_id: item.seller_id,
+          sellerId: item.seller_id,
+          userId: item.metadata?.userId || item.metadata?.user_id || item.seller_id,
           title: item.title,
           description: item.description,
           adType: (item.ad_type || item.metadata?.adType || (item.sdui_section_type === 'worker_profiles' ? 'REQUEST' : 'OFFER')).toUpperCase(),
-          sharePhone: item.share_phone ?? Boolean(item.contact_phone),
-          creatorPhone: item.creator_phone || item.contact_phone,
+          sharePhone: item.share_phone === true,
+          creatorPhone: item.share_phone === true
+            ? (item.creator_phone || item.contact_phone)
+            : null,
           publishedAt: item.published_at || item.created_at,
           categoryId: item.category_id,
           categoryNameAr: item.category_name_ar || item.category_id,
@@ -94,8 +155,8 @@ export const searchListings = async (req: Request, res: Response): Promise<void>
           cityNameAr: item.city_name_ar,
           status: item.status,
           purpose: item.purpose,
-          contactPhone: item.contact_phone,
-          whatsappNumber: item.whatsapp_number,
+          contactPhone: item.share_phone === true ? item.contact_phone : '',
+          whatsappNumber: item.share_phone === true ? item.whatsapp_number : null,
           contactEmail: item.contact_email,
           sellerName: item.seller_name,
           sellerType: item.seller_type,
@@ -227,12 +288,26 @@ export const getListingById = async (req: Request, res: Response): Promise<void>
           }))
           : (data.seller_avatar ? [{ id: 'media-0', url: data.seller_avatar, isPrimary: true, orderWeight: 0 }] : []);
 
+        const publicListing = data.share_phone === true
+          ? {
+              ...data,
+              metadata: {
+                ...(data.metadata || {}),
+                accountPhone: undefined,
+                userId: undefined,
+              },
+              media,
+            }
+          : {
+              ...data,
+              contact_phone: '',
+              whatsapp_number: null,
+              creator_phone: null,
+              media,
+            };
         res.status(200).json({
           success: true,
-          data: {
-            ...data,
-            media,
-          },
+          data: publicListing,
         });
         return;
       }
@@ -283,9 +358,18 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
       mediaUrls = [],
       attributes = [],
       status = 'active',
-      sharePhone = true,
+      sharePhone = false,
       creatorPhone,
+      accountPhone,
+      userId,
+      metadata,
     } = req.body;
+
+    const authenticatedUser = getAuthenticatedUser(req);
+    if (!authenticatedUser) {
+      res.status(401).json({ success: false, message: 'تسجيل الدخول مطلوب لنشر إعلان' });
+      return;
+    }
 
     const isDraft = status === 'draft' || status === 'DRAFT';
     const adContent = description || req.body.content || '';
@@ -306,12 +390,26 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
     const finalRegionId = regionId || req.body.governorate_id || 'ye-sanaa';
     const finalCategoryId = categoryId || req.body.main_category_id || 'jobs';
     const finalSubCategoryId = subCategoryId || req.body.sub_category_id || finalCategoryId;
-    const finalSharePhone = req.body.share_phone ?? sharePhone ?? true;
-    const finalContactPhone = finalSharePhone ? (contactPhone || creatorPhone || req.body.creator_phone || '+967777xxxxxx') : '';
+    const finalSharePhone = req.body.share_phone === true || sharePhone === true;
+    const authenticatedPhone = normalizePhoneDigits(authenticatedUser.phone);
+    const submittedPrimaryPhone = String(
+      contactPhone ||
+      req.body.primaryPhone ||
+      req.body.primary_phone ||
+      creatorPhone ||
+      req.body.creator_phone ||
+      ''
+    ).trim();
+    const finalContactPhone = finalSharePhone ? submittedPrimaryPhone : '';
 
-    // Automated Moderation Check (Keyword Compliance)
-    const combinedForMod = (derivedTitle + ' ' + adContent).toLowerCase();
-    const isProhibited = /(جنس|مساج خاص|اباحي|دعاره|سهرات خاصه|تعارف بنات|شواذ|سلاح|كلاشنكوف|مسدس للبيع|رصاص|ذخيره|قنابل|طائفيه|عنصريه)/.test(combinedForMod);
+    if (!isDraft && finalSharePhone && !finalContactPhone) {
+      res.status(400).json({ success: false, message: 'رقم الهاتف مطلوب عند تفعيل مشاركة رقم التواصل' });
+      return;
+    }
+
+    // Server-side moderation and rejection.
+    const moderationReason = getAdModerationReason(derivedTitle, adContent);
+    const isProhibited = moderationReason !== null;
 
     let finalStatus: string;
     let publishedAt: string | null = null;
@@ -320,8 +418,9 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
     } else if (isProhibited) {
       finalStatus = 'rejected';
     } else {
-      finalStatus = 'pending';
-      publishedAt = null;
+      const requestedStatus = String(status).toLowerCase();
+      finalStatus = requestedStatus === 'premium' ? 'premium' : 'active';
+      publishedAt = new Date().toISOString();
     }
 
     // Resolve valid city_id and cityName for Supabase foreign key
@@ -342,21 +441,62 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
     }
 
     // Resolve seller_id (required foreign key in Supabase)
-    let validSellerId = req.body.sellerId || req.body.seller_id;
-    if (!validSellerId && finalContactPhone) {
-      try {
-        const clean = finalContactPhone.replace(/\D/g, '');
-        const { data: u } = await supabase
-          .from('users')
-          .select('id')
-          .ilike('phone_e164', `%${clean.slice(-9)}%`)
-          .limit(1)
-          .maybeSingle();
-        if (u) validSellerId = u.id;
-      } catch (_) { }
+    let validSellerId = authenticatedUser.id || req.body.sellerId || req.body.seller_id || userId || metadata?.userId;
+
+    if (validSellerId) {
+      const { data: sellerUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', validSellerId)
+        .maybeSingle();
+      if (!sellerUser) validSellerId = null;
     }
+
+    if (!validSellerId && authenticatedPhone) {
+      const { data: sellerUser } = await supabase
+        .from('users')
+        .select('id')
+        .ilike('phone_e164', `%${authenticatedPhone.slice(-9)}%`)
+        .limit(1)
+        .maybeSingle();
+      if (sellerUser) validSellerId = sellerUser.id;
+    }
+
     if (!validSellerId) {
-      validSellerId = '7b2e912f-9812-4211-8c4d-91b3e10fa892'; // حمزة الشيف اليمني
+      res.status(403).json({ success: false, message: 'تعذر ربط الإعلان بحساب موثّق. سجّل الدخول مجددًا.' });
+      return;
+    }
+
+    if (!isDraft && !isProhibited) {
+      const titleKey = normalizeModerationText(derivedTitle);
+      const descriptionKey = normalizeModerationText(adContent);
+      const { data: ownerListings, error: duplicateError } = await supabase
+        .from('listings')
+        .select('id,title,description,status,seller_id')
+        .eq('seller_id', validSellerId)
+        .in('status', ['active', 'premium', 'ACTIVE', 'PREMIUM']);
+
+      if (duplicateError) {
+        res.status(503).json({ success: false, message: 'تعذر التحقق من تكرار الإعلان. أعد المحاولة لاحقًا.' });
+        return;
+      }
+
+      const duplicate = (ownerListings || []).some((listing: any) => {
+        const existingTitle = normalizeModerationText(String(listing.title || ''));
+        const existingDescription = normalizeModerationText(String(listing.description || listing.content || ''));
+        return (titleKey && existingTitle === titleKey) ||
+          (descriptionKey && existingDescription === descriptionKey);
+      });
+
+      if (duplicate) {
+        res.status(409).json({ success: false, message: 'لديك إعلان منشور مطابق لهذا النص بالفعل.' });
+        return;
+      }
+    }
+
+    if (isProhibited) {
+      res.status(400).json({ success: false, message: moderationReason });
+      return;
     }
 
     let insertedListing: any = null;
@@ -396,6 +536,11 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
             adType: finalAdType,
             sharePhone: finalSharePhone,
             creatorPhone: finalSharePhone ? finalContactPhone : null,
+            accountPhone: authenticatedUser.phone,
+            secondaryPhone: Array.isArray(req.body.altPhone)
+              ? req.body.altPhone
+              : (req.body.altPhone || req.body.secondary_phone || null),
+            userId: validSellerId,
             sectionType: finalAdType === 'REQUEST' ? 'worker_profiles' : 'job_vacancies',
             mediaUrls: Array.isArray(mediaUrls) ? mediaUrls : [],
             attributes: Array.isArray(attributes) ? attributes : [],
@@ -406,25 +551,6 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
 
       if (!error && data) {
         insertedListing = data;
-
-        if (!isDraft && !isProhibited) {
-          const autoApproveAt = new Date().toISOString();
-          const { data: approvedData, error: approvalError } = await supabase
-            .from('listings')
-            .update({
-              status: 'active',
-              published_at: autoApproveAt,
-            })
-            .eq('id', insertedListing.id)
-            .select()
-            .single();
-
-          if (!approvalError && approvedData) {
-            insertedListing = { ...insertedListing, ...approvedData, status: 'active', published_at: autoApproveAt };
-          } else {
-            insertedListing = { ...insertedListing, status: 'active', published_at: autoApproveAt };
-          }
-        }
       } else if (error) {
         console.error('❌ [Supabase createListing Error]:', error.message, error.details, error.hint, error.code);
       }
@@ -432,50 +558,10 @@ export const createListing = async (req: Request, res: Response): Promise<void> 
       console.error('❌ [Supabase createListing Exception]:', e.message || e);
     }
 
-    // In case DB failed or not ready
+    // Never claim that a database insert succeeded unless it actually returned a row.
     if (!insertedListing) {
-      const fallbackStatus = isDraft ? 'DRAFT' : isProhibited ? 'rejected' : 'active';
-      insertedListing = {
-        id: (isDraft ? 'draft-' : 'user-ad-') + Date.now(),
-        title: derivedTitle,
-        description: adContent || '',
-        adType: finalAdType,
-        categoryId: finalCategoryId,
-        categoryNameAr: finalCategoryId,
-        subCategoryId: finalSubCategoryId,
-        subCategoryNameAr: finalSubCategoryId,
-        sectionType: finalAdType === 'REQUEST' ? 'worker_profiles' : 'job_vacancies',
-        price: price ? Number(price) : null,
-        currency,
-        priceNegotiable,
-        countryId,
-        regionId: finalRegionId,
-        cityId: validCityId,
-        cityNameAr: validCityName,
-        status: fallbackStatus,
-        publishedAt: isDraft ? null : new Date().toISOString(),
-        purpose,
-        sharePhone: finalSharePhone,
-        creatorPhone: finalSharePhone ? finalContactPhone : null,
-        contactPhone: finalContactPhone,
-        whatsappNumber: finalContactPhone,
-        contactEmail,
-        sellerName,
-        sellerType,
-        sellerVerified: false,
-        sellerRating: 5.0,
-        viewsCount: 1,
-        clicksCount: 0,
-        createdAt: new Date().toISOString(),
-        media: (mediaUrls || []).map((url: string, i: number) => ({
-          id: 'media-' + i,
-          url,
-          isPrimary: i === 0,
-          orderWeight: i,
-        })),
-        attributes: attributes || [],
-      };
-      FALLBACK_LISTINGS.unshift(insertedListing);
+      res.status(503).json({ success: false, message: 'تعذر حفظ الإعلان على المنصة. لم يتم النشر، يرجى المحاولة مجددًا.' });
+      return;
     }
 
     const effectiveStatus = String(insertedListing?.status ?? finalStatus).toLowerCase();
@@ -690,6 +776,7 @@ export const updateListingStatus = async (req: Request, res: Response): Promise<
   try {
     const { id } = req.params;
     const { status } = req.body;
+    const authenticatedUser = getAuthenticatedUser(req);
 
     if (!status) {
       res.status(400).json({ success: false, message: 'الحالة الجديدة مطلوبة' });
@@ -711,14 +798,56 @@ export const updateListingStatus = async (req: Request, res: Response): Promise<
       dbStatus = 'draft';
     }
 
-    // 1. Try Supabase
+    if ((lower === 'ended' || lower === 'expired') && !authenticatedUser) {
+      res.status(401).json({ success: false, message: 'تسجيل الدخول مطلوب لإنهاء الإعلان' });
+      return;
+    }
+
+    if (lower === 'ended' || lower === 'expired') {
+      const { data: ownedListing, error: ownerError } = await supabase
+        .from('listings')
+        .select('id,seller_id')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (ownerError || !ownedListing) {
+        res.status(404).json({ success: false, message: 'الإعلان غير موجود' });
+        return;
+      }
+
+      const authenticatedPhone = normalizePhoneDigits(authenticatedUser.phone);
+      if (ownedListing.seller_id !== authenticatedUser.id && authenticatedPhone) {
+        const { data: seller } = await supabase
+          .from('users')
+          .select('phone_e164')
+          .eq('id', ownedListing.seller_id)
+          .maybeSingle();
+        const sellerPhone = normalizePhoneDigits(seller?.phone_e164);
+        if (!sellerPhone.endsWith(authenticatedPhone.slice(-7))) {
+          res.status(403).json({ success: false, message: 'لا يمكنك إنهاء إعلان لا يخصك' });
+          return;
+        }
+      } else if (ownedListing.seller_id !== authenticatedUser.id) {
+        res.status(403).json({ success: false, message: 'لا يمكنك إنهاء إعلان لا يخصك' });
+        return;
+      }
+    }
+
+    // 1. Update Supabase and fail if the database rejects the status change.
     try {
-      const { error } = await supabase.from('listings').update({ status: dbStatus }).eq('id', id);
+      const { error } = await supabase
+        .from('listings')
+        .update({ status: dbStatus })
+        .eq('id', id);
       if (error) {
         console.error('❌ [Supabase updateListingStatus Error]:', error.message, error.details, error.hint, error.code);
+        res.status(500).json({ success: false, message: 'تعذر تحديث حالة الإعلان على المنصة' });
+        return;
       }
     } catch (e: any) {
       console.error('❌ [Supabase updateListingStatus Exception]:', e.message || e);
+      res.status(500).json({ success: false, message: 'تعذر تحديث حالة الإعلان على المنصة' });
+      return;
     }
 
     // 2. Update fallback
